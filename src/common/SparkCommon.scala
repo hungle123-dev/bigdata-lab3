@@ -52,9 +52,17 @@ object SparkCommon {
       .otherwise(size(split(c, ",")))
 
   /**
-   * Ghi DataFrame ra ĐÚNG MỘT file (đề yêu cầu single file, đọc được filesystem thường).
-   * coalesce(1) rồi ghi vào thư mục tạm; caller đổi tên part-file sau (xem README).
+   * Ghi DataFrame ra ĐÚNG MỘT file parquet đọc được bằng filesystem thường.
+   * coalesce(1) ghi vào thư mục tạm, rồi copy part-*.parquet ra `target` (1 file phẳng).
+   * KHÔNG getmerge (hỏng footer parquet).
    */
-  def writeSingleParquet(df: DataFrame, dir: String): Unit =
+  def writeSingleParquet(df: DataFrame, dir: String, target: String): Unit = {
     df.coalesce(1).write.mode("overwrite").parquet(dir)
+    val hconf = df.sparkSession.sparkContext.hadoopConfiguration
+    val fs = org.apache.hadoop.fs.FileSystem.get(new java.net.URI(dir), hconf)
+    val part = fs.globStatus(new org.apache.hadoop.fs.Path(dir + "/part-*.parquet"))(0).getPath
+    val dst = new org.apache.hadoop.fs.Path(target)
+    fs.delete(dst, false)
+    org.apache.hadoop.fs.FileUtil.copy(fs, part, fs, dst, false, hconf)
+  }
 }

@@ -53,9 +53,11 @@ cd /lab/Lab3/src && mvn -q clean package
 
 ### 4. Chạy từng task
 ```bash
-# Task 2-1 (Spark) — đọc CSV local, xuất parquet
+# Task 2-1 (Spark) — đọc CSV local, tự xuất Task_2-1.parquet (1 file phẳng)
 spark-submit --class Task21 target/lab3-1.0.jar \
-  "/lab/Lab3/data/Amazon Sale Report.csv" /lab/Lab3/out/Task_2-1_parquet
+  "file:///lab/Lab3/data/asr.csv" \
+  "file:///lab/Lab3/out/Task_2-1_dir" \
+  "file:///lab/Lab3/out/Task_2-1.parquet"
 
 # Task 2-2 (Spark)
 spark-submit --class Task22 target/lab3-1.0.jar ...
@@ -64,12 +66,10 @@ spark-submit --class Task22 target/lab3-1.0.jar ...
 hadoop jar target/lab3-1.0.jar Task11 /data/asr.csv /out/task11
 ```
 
-### 5. Gộp về 1 file đúng tên (đề bắt buộc single file)
-Spark ghi ra thư mục chứa `part-*`. Đổi tên:
+### 5. Gộp về 1 file đúng tên
+Task 2-1 **tự** copy part-file ra `Task_2-1.parquet` (arg thứ 3). Các task khác:
 ```bash
-# Parquet
-mv out/Task_2-1_parquet/part-*.snappy.parquet out/Task_2-1.parquet
-# CSV
+# CSV (task MapReduce)
 mv out/task11/part-*.csv out/Task_1-1.csv
 ```
 **Cấm** `getmerge` với parquet (hỏng footer). 4 file kết quả upload lên Google Drive.

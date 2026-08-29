@@ -43,10 +43,12 @@ object Task21 {
       .agg(avg("amount").as("state_avg"))
 
     // KHỐI C: ứng viên = Status chứa "cancelled" AND Standard -> 6.909 dòng
+    // Khoá: cột "index" có sẵn (int duy nhất 0..128974) — KHÔNG dùng
+    // monotonically_increasing_id (không ổn định, sinh khác nhau mỗi lần eval).
     val candidates = base
       .filter(lower(col("Status")).contains("cancelled") &&
               col("ship-service-level") === "Standard")
-      .withColumn("row_id", monotonically_increasing_id())
+      .withColumn("row_id", col("index").cast("long"))
       .select("row_id", "city", "state", "amount", "promotion-ids")
 
     // Đếm mã HỢP LỆ mỗi đơn; LEFT join để đơn 0 mã vẫn ở mẫu số
@@ -68,7 +70,9 @@ object Task21 {
              col("amount") < col("state_avg"), lit(1)).otherwise(lit(0)))
 
     // KHỐI D: gộp theo thành phố -> %
+    // Loại đơn thiếu city (33 đơn ship-city null): "each city" không tính null.
     enriched
+      .filter(col("city").isNotNull && col("city") =!= "")
       .groupBy("city")
       .agg(count("*").as("total_orders"),
            sum("qualified").as("qualified_orders"))
@@ -80,6 +84,7 @@ object Task21 {
   def main(args: Array[String]): Unit = {
     val in  = if (args.length > 0) args(0) else "file:///lab/data/asr.csv"
     val out = if (args.length > 1) args(1) else "file:///lab/out/Task_2-1_parquet"
+    val target = if (args.length > 2) args(2) else "file:///lab/out/Task_2-1.parquet"
 
     val spark = SparkCommon.session("Task2-1-CancelledPromotions")
     spark.sparkContext.setLogLevel("WARN")
@@ -108,8 +113,8 @@ object Task21 {
     val totalQualified = result.agg(sum("qualified_orders")).first().getLong(0)
     println(s"[Task21] cities=${result.count()}  totalQualifiedOrders=$totalQualified (kỳ vọng 0)")
 
-    SparkCommon.writeSingleParquet(result, out)
-    println(s"[Task21] wrote $out")
+    SparkCommon.writeSingleParquet(result, out, target)
+    println(s"[Task21] wrote $target")
     spark.stop()
   }
 }
