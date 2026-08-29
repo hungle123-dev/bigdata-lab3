@@ -1,0 +1,75 @@
+\section*{Task 2-1 — Cancelled Orders \& Promotions (Spark DataFrame API)}
+
+\subsection*{(0) Hiểu và bóc đề}
+Với mỗi \textbf{thành phố}, tính \% đơn \emph{Cancelled + Standard} thoả \textbf{đồng thời}:
+\begin{enumerate}
+  \item có $\ge 3$ promotion \textbf{hợp lệ} (active period $\ge 2$ ngày; kể cả mã Amazon);
+  \item \texttt{amount} $<$ trung bình đơn \emph{Merchant} + \emph{Courier=Shipped} của \textbf{bang} chứa thành phố đó.
+\end{enumerate}
+Hai mức địa lý khác nhau trong một câu: ngưỡng tính theo \textbf{bang}, kết quả gộp theo \textbf{thành phố}.
+Dataset không có ngày hiệu lực KM — active period phải \emph{suy từ dữ liệu}: mỗi mã, ngày xuất hiện đầu/cuối trên toàn bộ đơn.
+
+\subsection*{(1) Phân rã thành 4 khối + lý do}
+\begin{center}
+\begin{tabular}{clll}
+\hline
+Khối & Việc & Phép & Kết quả \\
+\hline
+A & Tuổi thọ mã KM & \texttt{groupBy(promo).agg(min,max)}, lọc $\ge 2$ ngày & 284 $\to$ \textbf{185} mã \\
+B & Ngưỡng bang & \texttt{Merchant AND Courier=Shipped}, \texttt{groupBy(state).avg} & 31.881 dòng $\to$ \textbf{40} bang \\
+C & Tập đơn + đếm mã hợp lệ & lọc ứng viên; LEFT join A; LEFT join B & \textbf{6.909} đơn \\
+D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.435} city \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{Lý do thiết kế:}
+\begin{itemize}
+  \item Khối A dùng \texttt{groupBy().agg(min,max)} \emph{không} window function: cần thu 129k dòng về 284 mã (bảng nhỏ đi), window giữ nguyên số dòng và thêm một shuffle vô ích.
+  \item \textbf{LEFT join} (không INNER): đơn không có mã KM vẫn phải nằm ở \emph{mẫu số} của phần trăm; INNER làm mất đơn $\to$ \% sai. Sau join, \texttt{n\_valid} null $\to$ \texttt{coalesce(0)}.
+  \item Mã Amazon \textbf{vẫn đếm} (270/284 mã) — đề ghi rõ ``all promotions including those issued by Amazon''.
+  \item Chuẩn hoá \texttt{upper(trim(...))} bang \& thành phố (69 $\to$ 47 cách viết bang).
+\end{itemize}
+
+\subsection*{(2) Kết quả = 0\% mọi thành phố — có chứng minh}
+Tử số bằng 0 ở mọi thành phố. Đây \emph{là} đáp án đúng, không phải lỗi. Chứng minh bằng cách nới dần điều kiện:
+\begin{center}
+\begin{tabular}{lrrr}
+\hline
+Cách hiểu ``cancelled'' & Số đơn & Max mã/đơn & $\ge 3$ mã \\
+\hline
+Status chứa cancelled + Standard & 6.909 & 0 & \textbf{0} \\
+Courier=Cancelled + Standard & 43 & 0 & \textbf{0} \\
+Status chứa cancelled, mọi level & 18.332 & 1 & \textbf{0} \\
+Courier=Cancelled, mọi level & 5.935 & 2 & \textbf{0} \\
+\hline
+\end{tabular}
+\end{center}
+Toàn bộ 6.909 đơn Cancelled+Standard có \texttt{promotion-ids} rỗng; nới hết mức thì max chỉ 2 mã/đơn $\to$ điều kiện $\ge 3$ không bao giờ chạm được. \textbf{Không} hạ ngưỡng để ``ra số đẹp''. File xuất giữ cột chứng minh: \texttt{city, total\_orders, qualified\_orders, pct\_cancelled}.
+
+\subsection*{(3) explain(true) — phân tích kế hoạch thực thi}
+Chạy pipeline dưới 2 cấu hình (AQE tắt để đọc plan tĩnh; xem cảnh báo cuối mục):
+
+\begin{center}
+\begin{tabular}{lcc}
+\hline
+Đọc từ Physical Plan & Mặc định & \texttt{autoBroadcastJoinThreshold=-1} \\
+\hline
+(a) Physical join strategy & 3 $\times$ \textbf{BroadcastHashJoin} & 3 $\times$ \textbf{SortMergeJoin} \\
+(b) Exchange (shuffle) & 5 & 8 \\
+\quad BroadcastExchange & 3 & 0 \\
+\quad Sort node & 1 & 7 \\
+(c) WholeStageCodegen (max id) & 9 & 15 \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{(a)} 3 bảng đi join đều tí hon (185 mã hợp lệ, bảng đếm mã/đơn, 40 ngưỡng bang) $<$ 10 MB $\to$ Spark broadcast cả 3, khỏi shuffle bảng đơn. Ép \texttt{threshold=-1} buộc SortMergeJoin: mỗi join thêm 1 Exchange + 2 Sort hai phía.
+
+\textbf{(b)} Mặc định: 5 shuffle Exchange = 4 \texttt{groupBy} (mã KM, row\_id, state, city) + 1 \texttt{rangepartitioning} của \texttt{orderBy} cuối. Broadcast không tạo shuffle bảng lớn nên chỉ có 3 BroadcastExchange bảng nhỏ. Tắt broadcast: 8 Exchange (3 join giờ phải shuffle cả hai phía) và 7 Sort.
+
+\textbf{(c)} Số stage đọc ở Spark UI tab Jobs (mỗi Exchange chia một ranh giới stage).
+
+\textbf{Cảnh báo AQE:} Spark 3.5 bật Adaptive Query Execution mặc định $\to$ \texttt{explain(true)} in \emph{kế hoạch tĩnh}; runtime AQE có thể tự đổi (vd re-broadcast). Kế hoạch \emph{thật} xem ở Spark UI tab SQL. Bảng trên chạy với \texttt{spark.sql.adaptive.enabled=false} để plan tĩnh phản ánh đúng khác biệt broadcast.
+
+Plan đầy đủ: \texttt{report/plans/task21\_default.txt}, \texttt{task21\_nobroadcast.txt}.
