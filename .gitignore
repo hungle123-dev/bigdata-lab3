@@ -1,18 +1,18 @@
-# ---- Dữ liệu (KHÔNG commit — 69MB, vượt giới hạn GitHub) ----
-data/*.csv
-data/*.parquet
-!data/.gitkeep
+# ---- Dữ liệu ----
+# asr.csv (bản đã clean bằng clean.ipynb) ĐƯỢC commit để nhóm chạy trực tiếp.
+# Chỉ chặn bản gốc chưa xử lý + file tạm.
+data/Amazon Sale Report.csv
+data/*_backup.csv
 
-# ---- Kết quả xuất ----
+# ---- Kết quả xuất (build lại được, không commit) ----
 out/
-*.parquet
 
 # ---- Maven / JVM ----
 target/
 *.class
 dependency-reduced-pom.xml
 
-# ---- LaTeX ----
+# ---- LaTeX build tạm ----
 report/*.aux
 report/*.log
 report/*.out
@@ -27,5 +27,7 @@ desktop.ini
 .vscode/
 *.swp
 *~
+
+# ---- File thừa (CSV gốc chưa xử lý + rác lab khác) ----
 Lab03/Amazon Sale Report.csv
 shapes.parquet(legacy)

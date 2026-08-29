@@ -43,7 +43,7 @@ object MRCommon {
     outFmt.format(c.getTime)
   }
 
-  /** upper(trim) tên bang. Bẫy ② (69 -> 47). */
+  /** upper(trim) tên bang. Input asr.csv đã chuẩn hoá state ở clean.ipynb (37 bang). */
   def normState(s: String): String = if (s == null) "" else s.trim.toUpperCase(Locale.US)
 
   /** "shipped" = Status (chứa) 'shipped', không phải == 'Shipped'. Bẫy ①. */

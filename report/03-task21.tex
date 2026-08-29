@@ -71,7 +71,7 @@ Chạy pipeline dưới 2 cấu hình (AQE tắt để đọc plan tĩnh; xem c�
 
 \textbf{(a)} 3 bảng đi join đều tí hon (185 mã hợp lệ, bảng đếm mã/đơn, 36 ngưỡng bang) $<$ 10 MB $\to$ Spark broadcast cả 3, khỏi shuffle bảng đơn. Ép \texttt{threshold=-1} buộc SortMergeJoin: mỗi join thêm 1 Exchange + 2 Sort hai phía (Sort: $1 \to 7$).
 
-\textbf{(b)} Mặc định: 5 shuffle Exchange = 4 \texttt{groupBy} (mã KM, row\_id, state, city) + 1 \texttt{rangepartitioning} của \texttt{orderBy} cuối. Broadcast không tạo shuffle bảng lớn nên chỉ có 3 BroadcastExchange bảng nhỏ. Tắt broadcast: 8 Exchange (3 join giờ phải shuffle cả hai phía) và 7 Sort.
+\textbf{(b)} Mặc định: 5 shuffle Exchange = 4 \texttt{groupBy} (tuổi thọ mã KM, đếm mã hợp lệ mỗi đơn, ngưỡng bang, kết quả city) + 1 \texttt{rangepartitioning} của \texttt{orderBy} cuối. Broadcast không tạo shuffle bảng lớn nên chỉ có 3 BroadcastExchange bảng nhỏ. Tắt broadcast: 8 Exchange (3 join giờ phải shuffle cả hai phía) và 7 Sort.
 
 \textbf{(c)} Đo bằng \texttt{SparkContext.statusTracker}: đặt action \texttt{write} vào job group \texttt{"task21-write"}, sau đó lấy DISTINCT \texttt{stageIds} của các job trong group đó (\texttt{getJobIdsForGroup} $\to$ \texttt{SparkJobInfo.stageIds}). Kết quả: \textbf{11 stage} (AQE tắt, broadcast bật) — số này khớp kế hoạch tĩnh mặc định và tái lập được mỗi lần chạy (in ra \texttt{writeStages=11}). Việc verify (\texttt{count}/\texttt{sum}/\texttt{max}) đọc lại parquet đã ghi \emph{sau} khi đo, nên không lẫn vào stage count. Với AQE bật, stage có thể coalesce động — đọc thêm ở Spark UI tab Jobs (\texttt{localhost:4040}).
 
