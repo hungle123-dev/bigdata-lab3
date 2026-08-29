@@ -1,0 +1,17 @@
+services:
+  hadoop:
+    build: .
+    image: hcmus-lab3:3.4.1-spark3.5
+    container_name: hcmus-lab3
+    hostname: hadoop-master
+    ports:
+      - "9870:9870"   # NameNode UI
+      - "8088:8088"   # YARN UI
+      - "9000:9000"   # HDFS RPC
+      - "4040:4040"   # Spark UI (khi job đang chạy)
+    volumes:
+      - ../..:/lab            # repo Lab3: data/, src/, out/
+      - hadoop-data:/opt/hadoop/data
+
+volumes:
+  hadoop-data:

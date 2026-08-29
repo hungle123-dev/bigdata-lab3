@@ -1,0 +1,12 @@
+# Bắt script shell + source luôn checkout LF (4 người chạy Windows, code chạy trong Linux container)
+*.sh text eol=lf
+entrypoint* text eol=lf
+*.scala text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+
+# Binary — không diff/merge
+*.jar binary
+*.pdf binary
+*.parquet binary
+*.zip binary

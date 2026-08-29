@@ -1,0 +1,30 @@
+# ---- Dữ liệu (KHÔNG commit — 69MB, vượt giới hạn GitHub) ----
+data/*.csv
+data/*.parquet
+!data/.gitkeep
+
+# ---- Kết quả xuất ----
+out/
+*.parquet
+
+# ---- Maven / JVM ----
+target/
+*.class
+
+# ---- LaTeX ----
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.synctex.gz
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+Lab03/Amazon Sale Report.csv
+shapes.parquet(legacy)
