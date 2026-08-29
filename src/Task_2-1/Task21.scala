@@ -1,5 +1,7 @@
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.scheduler.{SparkListener, SparkListenerStageCompleted}
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * TASK 2-1 · Spark DataFrame API (KHÔNG raw SQL)
@@ -37,8 +39,10 @@ object Task21 {
       .select("promo")
 
     // KHỐI B: ngưỡng trung bình theo BANG (Merchant AND Courier=Shipped -> 40 bang)
+    // Lọc state null (có đơn merchant-shipped thiếu ship-state) — null không phải bang.
     val stateThreshold = base
       .filter(col("Fulfilment") === "Merchant" && col("Courier Status") === "Shipped")
+      .filter(col("state").isNotNull && col("state") =!= "")
       .groupBy("state")
       .agg(avg("amount").as("state_avg"))
 
@@ -109,12 +113,21 @@ object Task21 {
     spark.conf.set("spark.sql.adaptive.enabled", true)
     val result = buildPipeline(base)
 
+    // (c) Đếm số stage thật của action ghi parquet bằng SparkListener.
+    val stageCount = new AtomicInteger(0)
+    spark.sparkContext.addSparkListener(new SparkListener {
+      override def onStageCompleted(s: SparkListenerStageCompleted): Unit = stageCount.incrementAndGet()
+    })
+
     // Verify số (in ra để đối chiếu ASSUMPTIONS)
     val totalQualified = result.agg(sum("qualified_orders")).first().getLong(0)
-    println(s"[Task21] cities=${result.count()}  totalQualifiedOrders=$totalQualified (kỳ vọng 0)")
+    val maxQualified = result.agg(max("qualified_orders")).first().getLong(0)
+    println(s"[Task21] cities=${result.count()}  totalQualifiedOrders=$totalQualified  maxQualified=$maxQualified (kỳ vọng 0)")
 
+    // (c) Đếm số stage CHỈ của action ghi parquet (đặt mốc ngay trước write).
+    val before = stageCount.get()
     SparkCommon.writeSingleParquet(result, out, target)
-    println(s"[Task21] wrote $target")
+    println(s"[Task21] wrote $target  writeStages=${stageCount.get() - before}")
     spark.stop()
   }
 }

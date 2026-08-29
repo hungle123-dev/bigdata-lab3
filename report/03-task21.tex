@@ -62,7 +62,7 @@ Chạy pipeline dưới 2 cấu hình (AQE tắt để đọc plan tĩnh; xem c�
 (b) Exchange (shuffle) & 5 & 8 \\
 \quad BroadcastExchange & 3 & 0 \\
 \quad Sort node & 1 & 7 \\
-(c) Số stage (đo bằng SparkListener) & 10 & --- \\
+(c) Số stage (SparkListener, action \texttt{write}) & 9 & --- \\
 \hline
 \end{tabular}
 \end{center}
@@ -71,7 +71,7 @@ Chạy pipeline dưới 2 cấu hình (AQE tắt để đọc plan tĩnh; xem c�
 
 \textbf{(b)} Mặc định: 5 shuffle Exchange = 4 \texttt{groupBy} (mã KM, row\_id, state, city) + 1 \texttt{rangepartitioning} của \texttt{orderBy} cuối. Broadcast không tạo shuffle bảng lớn nên chỉ có 3 BroadcastExchange bảng nhỏ. Tắt broadcast: 8 Exchange (3 join giờ phải shuffle cả hai phía) và 7 Sort.
 
-\textbf{(c)} Đo bằng \texttt{SparkListener.onStageCompleted} quanh action \texttt{write}: \textbf{10 stage} (AQE tắt, broadcast bật). Với AQE bật, số stage thực tế thay đổi do coalesce động — đọc trực tiếp ở Spark UI tab Jobs (\texttt{localhost:4040}).
+\textbf{(c)} Đo bằng \texttt{SparkListener.onStageCompleted} bao quanh action \texttt{write} (đã cài trong \texttt{Task21.scala}): \textbf{9 stage} (AQE bật, broadcast bật). Số này in ra console mỗi lần chạy (\texttt{writeStages=9}). Với AQE, stage có thể coalesce động — đọc thêm ở Spark UI tab Jobs (\texttt{localhost:4040}).
 
 \textbf{Cảnh báo AQE:} Spark 3.5 bật Adaptive Query Execution mặc định $\to$ \texttt{explain(true)} in \emph{kế hoạch tĩnh}; runtime AQE có thể tự đổi (vd re-broadcast). Kế hoạch \emph{thật} xem ở Spark UI tab SQL. Bảng trên chạy với \texttt{spark.sql.adaptive.enabled=false} để plan tĩnh phản ánh đúng khác biệt broadcast.
 
