@@ -47,8 +47,8 @@ hdfs dfs -put -f "/lab/Lab3/data/Amazon Sale Report.csv" /data/asr.csv
 
 ### 3. Build jar chung
 ```bash
-cd /lab/Lab3/src && mvn -q clean package
-# ra target/lab3-1.0.jar (đã bundle scala-library + opencsv)
+cd /lab/Lab3/src && mvn clean package
+# ra target/lab3-1.0.jar (đã bundle scala-library + opencsv) — VERIFIED: BUILD SUCCESS
 ```
 
 ### 4. Chạy từng task

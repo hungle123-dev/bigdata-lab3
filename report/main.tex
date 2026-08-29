@@ -1,0 +1,40 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}          % tiếng Việt
+\usepackage{lmodern}
+\usepackage[vietnamese,english]{babel}
+\usepackage{geometry}\geometry{margin=2.2cm}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% code block cho explain plan / Scala
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+\title{Lab 03 — Advanced MapReduce \& Spark Structured APIs}
+\author{Nhóm 4 người — RepresentativeID 23127371}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ---- Giả định chung (từ ASSUMPTIONS.md) ----
+\input{00-assumptions}
+
+% ---- 4 bài, mỗi người 1 file ----
+\input{01-task11}   % TV1 — MapReduce sliding window
+\input{02-task12}   % TV2 — MapReduce median variety
+\input{03-task21}   % TV3 — Spark cancelled orders  (ĐÃ XONG)
+\input{04-task22}   % TV4 — Spark percentile P90/P80
+
+\end{document}

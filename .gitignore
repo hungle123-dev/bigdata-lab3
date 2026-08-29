@@ -10,6 +10,7 @@ out/
 # ---- Maven / JVM ----
 target/
 *.class
+dependency-reduced-pom.xml
 
 # ---- LaTeX ----
 report/*.aux
