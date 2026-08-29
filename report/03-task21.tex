@@ -18,7 +18,7 @@ Khối & Việc & Phép & Kết quả \\
 A & Tuổi thọ mã KM & \texttt{groupBy(promo).agg(min,max)}, lọc $\ge 2$ ngày & 284 $\to$ \textbf{185} mã \\
 B & Ngưỡng bang & \texttt{Merchant AND Courier=Shipped}, \texttt{groupBy(state).avg} & 31.881 dòng $\to$ \textbf{40} bang \\
 C & Tập đơn + đếm mã hợp lệ & lọc ứng viên; LEFT join A; LEFT join B & \textbf{6.909} đơn \\
-D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.434} city \\
+D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.434} city (6.906 đơn) \\
 \hline
 \end{tabular}
 \end{center}
@@ -28,12 +28,12 @@ D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.434
   \item Khối A dùng \texttt{groupBy().agg(min,max)} \emph{không} window function: cần thu 129k dòng về 284 mã (bảng nhỏ đi), window giữ nguyên số dòng và thêm một shuffle vô ích.
   \item \textbf{LEFT join} (không INNER): đơn không có mã KM vẫn phải nằm ở \emph{mẫu số} của phần trăm; INNER làm mất đơn $\to$ \% sai. Sau join, \texttt{n\_valid} null $\to$ \texttt{coalesce(0)}.
   \item Mã Amazon \textbf{vẫn đếm} (270/284 mã) — đề ghi rõ ``all promotions including those issued by Amazon''.
-  \item Chuẩn hoá \texttt{upper(trim(...))} bang \& thành phố (69 $\to$ 47 cách viết bang). 33 đơn thiếu \texttt{ship-city} bị loại (``each city'' không tính null).
+  \item Chuẩn hoá \texttt{upper(trim(...))} bang \& thành phố (69 $\to$ 47 cách viết bang). Trong tập ứng viên: 1.639 cách viết \texttt{ship-city} thô $\to$ \textbf{1.434} city chuẩn hoá. 3/6.909 đơn thiếu \texttt{ship-city} bị loại trước \texttt{groupBy} (``each city'' không tính null) $\to$ mẫu số cuối \textbf{6.906} đơn.
   \item Khoá đơn dùng cột \texttt{index} có sẵn (int duy nhất 0..128974), \emph{không} dùng \texttt{monotonically\_increasing\_id} (không ổn định giữa các lần đánh giá).
 \end{itemize}
 
 \subsection*{(2) Kết quả = 0\% mọi thành phố — có chứng minh}
-Tử số bằng 0 ở mọi thành phố (1.434 city sau khi loại 33 đơn thiếu \texttt{ship-city}). Đây \emph{là} đáp án đúng, không phải lỗi. Chứng minh bằng cách nới dần điều kiện:
+Tử số bằng 0 ở mọi thành phố. Kết quả: 1.434 city, mẫu số 6.906 đơn (6.909 ứng viên trừ 3 đơn thiếu \texttt{ship-city}). Đây \emph{là} đáp án đúng, không phải lỗi. Chứng minh bằng cách nới dần điều kiện:
 \begin{center}
 \begin{tabular}{lrrr}
 \hline
@@ -62,7 +62,7 @@ Chạy pipeline dưới 2 cấu hình (AQE tắt để đọc plan tĩnh; xem c�
 (b) Exchange (shuffle) & 5 & 8 \\
 \quad BroadcastExchange & 3 & 0 \\
 \quad Sort node & 1 & 7 \\
-(c) Số stage (SparkListener, action \texttt{write}) & 9 & --- \\
+(c) Số stage của action \texttt{write} (distinct stageIds) & 11 & --- \\
 \hline
 \end{tabular}
 \end{center}
@@ -71,7 +71,7 @@ Chạy pipeline dưới 2 cấu hình (AQE tắt để đọc plan tĩnh; xem c�
 
 \textbf{(b)} Mặc định: 5 shuffle Exchange = 4 \texttt{groupBy} (mã KM, row\_id, state, city) + 1 \texttt{rangepartitioning} của \texttt{orderBy} cuối. Broadcast không tạo shuffle bảng lớn nên chỉ có 3 BroadcastExchange bảng nhỏ. Tắt broadcast: 8 Exchange (3 join giờ phải shuffle cả hai phía) và 7 Sort.
 
-\textbf{(c)} Đo bằng \texttt{SparkListener.onStageCompleted} bao quanh action \texttt{write} (đã cài trong \texttt{Task21.scala}): \textbf{9 stage} (AQE bật, broadcast bật). Số này in ra console mỗi lần chạy (\texttt{writeStages=9}). Với AQE, stage có thể coalesce động — đọc thêm ở Spark UI tab Jobs (\texttt{localhost:4040}).
+\textbf{(c)} Đo bằng \texttt{SparkContext.statusTracker}: đặt action \texttt{write} vào job group \texttt{"task21-write"}, sau đó lấy DISTINCT \texttt{stageIds} của các job trong group đó (\texttt{getJobIdsForGroup} $\to$ \texttt{SparkJobInfo.stageIds}). Kết quả: \textbf{11 stage} (AQE tắt, broadcast bật) — số này khớp kế hoạch tĩnh mặc định và tái lập được mỗi lần chạy (in ra \texttt{writeStages=11}). Việc verify (\texttt{count}/\texttt{sum}/\texttt{max}) đọc lại parquet đã ghi \emph{sau} khi đo, nên không lẫn vào stage count. Với AQE bật, stage có thể coalesce động — đọc thêm ở Spark UI tab Jobs (\texttt{localhost:4040}).
 
 \textbf{Cảnh báo AQE:} Spark 3.5 bật Adaptive Query Execution mặc định $\to$ \texttt{explain(true)} in \emph{kế hoạch tĩnh}; runtime AQE có thể tự đổi (vd re-broadcast). Kế hoạch \emph{thật} xem ở Spark UI tab SQL. Bảng trên chạy với \texttt{spark.sql.adaptive.enabled=false} để plan tĩnh phản ánh đúng khác biệt broadcast.
 

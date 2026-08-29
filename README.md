@@ -42,28 +42,29 @@ docker exec -it hcmus-lab3 bash
 ### 2. Đưa dữ liệu lên HDFS (cho Task MapReduce)
 ```bash
 hdfs dfs -mkdir -p /data
-hdfs dfs -put -f "/lab/Lab3/data/Amazon Sale Report.csv" /data/asr.csv
+hdfs dfs -put -f /lab/data/asr.csv /data/asr.csv
 ```
 
 ### 3. Build jar chung
 ```bash
-cd /lab/Lab3/src && mvn clean package
+cd /lab/src && mvn clean package
 # ra target/lab3-1.0.jar (đã bundle scala-library + opencsv) — VERIFIED: BUILD SUCCESS
 ```
 
 ### 4. Chạy từng task
 ```bash
 # Task 2-1 (Spark) — đọc CSV local, tự xuất Task_2-1.parquet (1 file phẳng)
-spark-submit --class Task21 target/lab3-1.0.jar \
-  "file:///lab/Lab3/data/asr.csv" \
-  "file:///lab/Lab3/out/Task_2-1_dir" \
-  "file:///lab/Lab3/out/Task_2-1.parquet"
+# 3 arg = input, thư mục part tạm, file parquet đích. Khớp default trong Task21.scala.
+spark-submit --class Task21 /lab/src/target/lab3-1.0.jar \
+  "file:///lab/data/asr.csv" \
+  "file:///lab/out/Task_2-1_parquet" \
+  "file:///lab/out/Task_2-1.parquet"
 
 # Task 2-2 (Spark)
-spark-submit --class Task22 target/lab3-1.0.jar ...
+spark-submit --class Task22 /lab/src/target/lab3-1.0.jar ...
 
 # Task 1-1, 1-2 (MapReduce)
-hadoop jar target/lab3-1.0.jar Task11 /data/asr.csv /out/task11
+hadoop jar /lab/src/target/lab3-1.0.jar Task11 /data/asr.csv /out/task11
 ```
 
 ### 5. Gộp về 1 file đúng tên
@@ -77,7 +78,10 @@ mv out/task11/part-*.csv out/Task_1-1.csv
 ## Kiểm nhanh trước nộp
 ```python
 import pandas as pd
-pd.read_parquet('out/Task_2-1.parquet').shape   # ~1434 dòng, pct toàn 0
+d = pd.read_parquet('out/Task_2-1.parquet')
+print(d.shape)                    # (1434, 4)
+print(d['total_orders'].sum())    # 6906
+print(d['pct_cancelled'].unique())# [0.]
 ```
 
 ## Nộp

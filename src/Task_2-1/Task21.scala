@@ -1,7 +1,5 @@
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.scheduler.{SparkListener, SparkListenerStageCompleted}
-import java.util.concurrent.atomic.AtomicInteger
+import org.apache.spark.sql.DataFrame
 
 /**
  * TASK 2-1 · Spark DataFrame API (KHÔNG raw SQL)
@@ -14,7 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *   A  tuổi thọ mã KM   groupBy(promo).agg(min/max)   284 -> 185 mã hợp lệ
  *   B  ngưỡng bang      Merchant AND Courier=Shipped  31.881 dòng -> 40 bang
  *   C  tập đơn          LEFT join A (đếm mã hợp lệ), LEFT join B (so ngưỡng)  6.909 đơn
- *   D  gộp city         % đơn thoả (nValid>=3 AND amount<thr)  ~1.435 city
+ *   D  gộp city         % đơn thoả; loại 3 đơn thiếu city -> mẫu số 6.906,
+ *                       1.639 cách viết city thô -> 1.434 city chuẩn hoá
  *
  * Đáp số kỳ vọng: 0% mọi thành phố (đã chứng minh — KHÔNG nới điều kiện).
  * Report (a)(b)(c): dựng lại pipeline dưới 2 conf, explain mỗi lần.
@@ -74,7 +73,8 @@ object Task21 {
              col("amount") < col("state_avg"), lit(1)).otherwise(lit(0)))
 
     // KHỐI D: gộp theo thành phố -> %
-    // Loại đơn thiếu city (33 đơn ship-city null): "each city" không tính null.
+    // Loại đơn thiếu city (3/6.909 ứng viên thiếu ship-city) -> mẫu số 6.906.
+    // "each city" không tính null. 1.639 cách viết thô -> 1.434 city sau upper(trim).
     enriched
       .filter(col("city").isNotNull && col("city") =!= "")
       .groupBy("city")
@@ -86,48 +86,51 @@ object Task21 {
   }
 
   def main(args: Array[String]): Unit = {
-    val in  = if (args.length > 0) args(0) else "file:///lab/data/asr.csv"
-    val out = if (args.length > 1) args(1) else "file:///lab/out/Task_2-1_parquet"
+    val in     = if (args.length > 0) args(0) else "file:///lab/data/asr.csv"
+    val out    = if (args.length > 1) args(1) else "file:///lab/out/Task_2-1_parquet"
     val target = if (args.length > 2) args(2) else "file:///lab/out/Task_2-1.parquet"
 
     val spark = SparkCommon.session("Task2-1-CancelledPromotions")
     spark.sparkContext.setLogLevel("WARN")
-    val base = SparkCommon.normalize(SparkCommon.readRaw(spark, in)).cache()
+    try {
+      // base đọc 1 lần; KHÔNG cache — chỉ còn đúng một action pipeline (write) nên cache vô ích.
+      val base = SparkCommon.normalize(SparkCommon.readRaw(spark, in))
 
-    // ---- REPORT (a)(b)(c): TẮT AQE để explain in plan tĩnh thật ----
-    // (AQE bật thì runtime tự re-broadcast, che mất khác biệt threshold.)
-    spark.conf.set("spark.sql.adaptive.enabled", false)
+      // ---- REPORT (a)(b): explain plan tĩnh, TẮT AQE để plan phản ánh đúng broadcast ----
+      spark.conf.set("spark.sql.adaptive.enabled", false)
 
-    // Lần 1: mặc định -> 3 BroadcastHashJoin (3 bảng join đều tí hon)
-    spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 10 * 1024 * 1024)
-    println("========== EXPLAIN — DEFAULT (broadcast on, AQE off) ==========")
-    buildPipeline(base).explain(true)
+      spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 10 * 1024 * 1024)
+      println("========== EXPLAIN — DEFAULT (broadcast on, AQE off) ==========")
+      buildPipeline(base).explain(true)
 
-    // Lần 2: tắt broadcast -> 3 SortMergeJoin + thêm Exchange/Sort
-    spark.conf.set("spark.sql.autoBroadcastJoinThreshold", -1)
-    println("========== EXPLAIN — autoBroadcastJoinThreshold=-1 (AQE off) ==========")
-    buildPipeline(base).explain(true)
+      spark.conf.set("spark.sql.autoBroadcastJoinThreshold", -1)
+      println("========== EXPLAIN — autoBroadcastJoinThreshold=-1 (AQE off) ==========")
+      buildPipeline(base).explain(true)
 
-    // ---- Thực thi + xuất: trả AQE + broadcast về mặc định ----
-    spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 10 * 1024 * 1024)
-    spark.conf.set("spark.sql.adaptive.enabled", true)
-    val result = buildPipeline(base)
+      // ---- (c) Đo stage của RIÊNG action write, AQE off + broadcast bật ----
+      // -> stage count khớp static plan mặc định. Không action verify nào trước write.
+      spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 10 * 1024 * 1024)
+      // (AQE vẫn off) — plan write = plan default đã explain ở trên.
+      val sc = spark.sparkContext
+      sc.setJobGroup("task21-write", "Task21 write output parquet")
+      SparkCommon.writeSingleParquet(buildPipeline(base), out, target)
+      val writeJobIds = sc.statusTracker.getJobIdsForGroup("task21-write")
+      val writeStages = writeJobIds
+        .flatMap(jid => sc.statusTracker.getJobInfo(jid).map(_.stageIds()).getOrElse(Array.empty[Int]))
+        .distinct
+      sc.clearJobGroup()
+      println(s"[Task21] writeStages(distinct stageIds, AQE off, broadcast on)=${writeStages.length}")
 
-    // (c) Đếm số stage thật của action ghi parquet bằng SparkListener.
-    val stageCount = new AtomicInteger(0)
-    spark.sparkContext.addSparkListener(new SparkListener {
-      override def onStageCompleted(s: SparkListenerStageCompleted): Unit = stageCount.incrementAndGet()
-    })
-
-    // Verify số (in ra để đối chiếu ASSUMPTIONS)
-    val totalQualified = result.agg(sum("qualified_orders")).first().getLong(0)
-    val maxQualified = result.agg(max("qualified_orders")).first().getLong(0)
-    println(s"[Task21] cities=${result.count()}  totalQualifiedOrders=$totalQualified  maxQualified=$maxQualified (kỳ vọng 0)")
-
-    // (c) Đếm số stage CHỈ của action ghi parquet (đặt mốc ngay trước write).
-    val before = stageCount.get()
-    SparkCommon.writeSingleParquet(result, out, target)
-    println(s"[Task21] wrote $target  writeStages=${stageCount.get() - before}")
-    spark.stop()
+      // ---- Verify SAU write, đọc lại parquet đã ghi (KHÔNG lẫn vào stage count) ----
+      val res = spark.read.parquet(target)
+      val cities = res.count()
+      val totalOrders = res.agg(sum("total_orders")).first().getLong(0)
+      val totalQualified = res.agg(sum("qualified_orders")).first().getLong(0)
+      val maxQualified = res.agg(max("qualified_orders")).first().getLong(0)
+      println(s"[Task21] cities=$cities totalOrders=$totalOrders " +
+              s"totalQualifiedOrders=$totalQualified maxQualified=$maxQualified")
+    } finally {
+      spark.stop()
+    }
   }
 }
