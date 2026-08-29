@@ -10,9 +10,9 @@ import org.apache.spark.sql.DataFrame
  *
  * Pipeline 4 khối — xem ASSUMPTIONS.md mục C4:
  *   A  tuổi thọ mã KM   groupBy(promo).agg(min/max)   284 -> 185 mã hợp lệ
- *   B  ngưỡng bang      Merchant AND Courier=Shipped  31.881 dòng -> 40 bang
- *   C  tập đơn          LEFT join A (đếm mã hợp lệ), LEFT join B (so ngưỡng)  6.909 đơn
- *   D  gộp city         % đơn thoả; loại 3 đơn thiếu city -> mẫu số 6.906,
+ *   B  ngưỡng bang      Merchant AND Courier=Shipped  -> 36 bang (input đã clean state)
+ *   C  tập đơn          LEFT join A (đếm mã hợp lệ), LEFT join B (so ngưỡng)  6.906 đơn
+ *   D  gộp city         % đơn thoả; input asr.csv đã tiền xử lý (clean.ipynb),
  *                       1.639 cách viết city thô -> 1.434 city chuẩn hoá
  *
  * Đáp số kỳ vọng: 0% mọi thành phố (đã chứng minh — KHÔNG nới điều kiện).
@@ -37,16 +37,16 @@ object Task21 {
       .filter(col("active_days") >= 2)          // C4: between = phép trừ -> 185 mã
       .select("promo")
 
-    // KHỐI B: ngưỡng trung bình theo BANG (Merchant AND Courier=Shipped -> 40 bang)
-    // Lọc state null (có đơn merchant-shipped thiếu ship-state) — null không phải bang.
+    // KHỐI B: ngưỡng trung bình theo BANG (Merchant AND Courier=Shipped -> 36 bang)
+    // Lọc state null/rỗng cho chắc (input đã clean nên không còn null, nhưng giữ để an toàn).
     val stateThreshold = base
       .filter(col("Fulfilment") === "Merchant" && col("Courier Status") === "Shipped")
       .filter(col("state").isNotNull && col("state") =!= "")
       .groupBy("state")
       .agg(avg("amount").as("state_avg"))
 
-    // KHỐI C: ứng viên = Status chứa "cancelled" AND Standard -> 6.909 dòng
-    // Khoá: cột "index" có sẵn (int duy nhất 0..128974) — KHÔNG dùng
+    // KHỐI C: ứng viên = Status chứa "cancelled" AND Standard -> 6.906 dòng
+    // Khoá: cột "index" có sẵn (int duy nhất) — KHÔNG dùng
     // monotonically_increasing_id (không ổn định, sinh khác nhau mỗi lần eval).
     val candidates = base
       .filter(lower(col("Status")).contains("cancelled") &&

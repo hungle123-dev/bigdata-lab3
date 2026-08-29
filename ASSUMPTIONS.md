@@ -8,6 +8,11 @@
 Dataset: `Amazon Sale Report.csv` — **128.975 dòng, 24 cột**, 31/03/2022 → 29/06/2022 (91 ngày).
 Số dưới đây đo bằng pandas trên chính file này.
 
+> **Tiền xử lý (clean.ipynb):** nhóm chuẩn hoá `ship-state` (gộp cách viết trùng: `NEW DELHI→DELHI`,
+> `ORISSA→ODISHA`, `RJ→RAJASTHAN`, `PB→PUNJAB`, sửa lỗi chính tả…) và **loại 33 dòng thiếu ship-state**
+> → `asr.csv` **128.942 dòng, 37 bang**. Đây là INPUT CHUNG của cả 4 task. State normalization
+> làm ở đây, KHÔNG lặp lại trong Spark/MapReduce.
+
 ---
 
 ## A. Năm cái bẫy dữ liệu — áp cho MỌI task
@@ -57,6 +62,7 @@ MapReduce: opencsv hoặc parser tự viết). `line.split(",")` là SAI.
 - Đếm "đơn" theo **dòng CSV** (không gộp Order ID). Slide xác nhận gộp Order ID cũng ra 0.
 - "active period ≥ 2 days" = `last − first ≥ 2` (between = phép trừ) → 185 mã hợp lệ. Report ghi: `≥ 1` → 233 mã.
 - **LEFT join** (đơn không KM vẫn ở mẫu số). Mã Amazon vẫn đếm (270/284 mã).
+- Input dùng bản clean (clean.ipynb): 36 bang merchant-shipped, 6.906 ứng viên, 1.434 city.
 - Đáp số **= 0% mọi thành phố** — đã chứng minh, KHÔNG nới điều kiện để ra số đẹp.
 
 ---

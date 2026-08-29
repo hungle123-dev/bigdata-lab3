@@ -9,6 +9,8 @@ Với mỗi \textbf{thành phố}, tính \% đơn \emph{Cancelled + Standard} th
 Hai mức địa lý khác nhau trong một câu: ngưỡng tính theo \textbf{bang}, kết quả gộp theo \textbf{thành phố}.
 Dataset không có ngày hiệu lực KM — active period phải \emph{suy từ dữ liệu}: mỗi mã, ngày xuất hiện đầu/cuối trên toàn bộ đơn.
 
+\textbf{Dữ liệu đầu vào:} nhóm tiền xử lý \texttt{Amazon Sale Report.csv} bằng \texttt{clean.ipynb} $\to$ \texttt{asr.csv}: chuẩn hoá \texttt{ship-state} (gộp các cách viết trùng như \texttt{NEW DELHI}$\to$\texttt{DELHI}, \texttt{ORISSA}$\to$\texttt{ODISHA}, \texttt{RJ}$\to$\texttt{RAJASTHAN}, sửa lỗi chính tả) và loại 33 dòng thiếu \texttt{ship-state} (128.975 $\to$ 128.942 dòng, 47 $\to$ 37 bang). State normalization làm ở tiền xử lý, không lặp lại trong Spark.
+
 \subsection*{(1) Phân rã thành 4 khối + lý do}
 \begin{center}
 \begin{tabular}{clll}
@@ -16,9 +18,9 @@ Dataset không có ngày hiệu lực KM — active period phải \emph{suy từ
 Khối & Việc & Phép & Kết quả \\
 \hline
 A & Tuổi thọ mã KM & \texttt{groupBy(promo).agg(min,max)}, lọc $\ge 2$ ngày & 284 $\to$ \textbf{185} mã \\
-B & Ngưỡng bang & \texttt{Merchant AND Courier=Shipped}, \texttt{groupBy(state).avg} & 31.881 dòng $\to$ \textbf{40} bang \\
-C & Tập đơn + đếm mã hợp lệ & lọc ứng viên; LEFT join A; LEFT join B & \textbf{6.909} đơn \\
-D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.434} city (6.906 đơn) \\
+B & Ngưỡng bang & \texttt{Merchant AND Courier=Shipped}, \texttt{groupBy(state).avg} & \textbf{36} bang \\
+C & Tập đơn + đếm mã hợp lệ & lọc ứng viên; LEFT join A; LEFT join B & \textbf{6.906} đơn \\
+D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.434} city \\
 \hline
 \end{tabular}
 \end{center}
@@ -28,25 +30,25 @@ D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.434
   \item Khối A dùng \texttt{groupBy().agg(min,max)} \emph{không} window function: cần thu 129k dòng về 284 mã (bảng nhỏ đi), window giữ nguyên số dòng và thêm một shuffle vô ích.
   \item \textbf{LEFT join} (không INNER): đơn không có mã KM vẫn phải nằm ở \emph{mẫu số} của phần trăm; INNER làm mất đơn $\to$ \% sai. Sau join, \texttt{n\_valid} null $\to$ \texttt{coalesce(0)}.
   \item Mã Amazon \textbf{vẫn đếm} (270/284 mã) — đề ghi rõ ``all promotions including those issued by Amazon''.
-  \item Chuẩn hoá \texttt{upper(trim(...))} bang \& thành phố (69 $\to$ 47 cách viết bang). Trong tập ứng viên: 1.639 cách viết \texttt{ship-city} thô $\to$ \textbf{1.434} city chuẩn hoá. 3/6.909 đơn thiếu \texttt{ship-city} bị loại trước \texttt{groupBy} (``each city'' không tính null) $\to$ mẫu số cuối \textbf{6.906} đơn.
+  \item Chuẩn hoá bang làm ở tiền xử lý (\texttt{clean.ipynb}, 47 $\to$ 37 bang). Task 2-1 chỉ \texttt{upper(trim)} thành phố. Trong tập ứng viên: 1.639 cách viết \texttt{ship-city} thô $\to$ \textbf{1.434} city chuẩn hoá. Tập ứng viên còn \textbf{6.906} đơn (các đơn thiếu \texttt{ship-state} đã bị loại ở tiền xử lý), mọi đơn đều có \texttt{ship-city} $\to$ mẫu số \textbf{6.906}.
   \item Khoá đơn dùng cột \texttt{index} có sẵn (int duy nhất 0..128974), \emph{không} dùng \texttt{monotonically\_increasing\_id} (không ổn định giữa các lần đánh giá).
 \end{itemize}
 
 \subsection*{(2) Kết quả = 0\% mọi thành phố — có chứng minh}
-Tử số bằng 0 ở mọi thành phố. Kết quả: 1.434 city, mẫu số 6.906 đơn (6.909 ứng viên trừ 3 đơn thiếu \texttt{ship-city}). Đây \emph{là} đáp án đúng, không phải lỗi. Chứng minh bằng cách nới dần điều kiện:
+Tử số bằng 0 ở mọi thành phố. Kết quả: 1.434 city, mẫu số 6.906 đơn. Đây \emph{là} đáp án đúng, không phải lỗi. Chứng minh bằng cách nới dần điều kiện:
 \begin{center}
 \begin{tabular}{lrrr}
 \hline
 Cách hiểu ``cancelled'' & Số đơn & Max mã/đơn & $\ge 3$ mã \\
 \hline
-Status chứa cancelled + Standard & 6.909 & 0 & \textbf{0} \\
+Status chứa cancelled + Standard & 6.906 & 0 & \textbf{0} \\
 Courier=Cancelled + Standard & 43 & 0 & \textbf{0} \\
 Status chứa cancelled, mọi level & 18.332 & 1 & \textbf{0} \\
 Courier=Cancelled, mọi level & 5.935 & 2 & \textbf{0} \\
 \hline
 \end{tabular}
 \end{center}
-Toàn bộ 6.909 đơn Cancelled+Standard có \texttt{promotion-ids} rỗng; nới hết mức thì max chỉ 2 mã/đơn $\to$ điều kiện $\ge 3$ không bao giờ chạm được. \textbf{Không} hạ ngưỡng để ``ra số đẹp''. File xuất giữ cột chứng minh: \texttt{city, total\_orders, qualified\_orders, pct\_cancelled}.
+Toàn bộ 6.906 đơn Cancelled+Standard có \texttt{promotion-ids} rỗng; nới hết mức thì max chỉ 2 mã/đơn $\to$ điều kiện $\ge 3$ không bao giờ chạm được. \textbf{Không} hạ ngưỡng để ``ra số đẹp''. File xuất giữ cột chứng minh: \texttt{city, total\_orders, qualified\_orders, pct\_cancelled}.
 
 \textbf{Join có chạy đúng không?} Áp logic đếm mã hợp lệ lên \emph{toàn bộ} dataset (không chỉ đơn cancelled) cho \texttt{max(n\_valid) = 36} — có đơn tới 36 mã hợp lệ. Chứng tỏ join đúng; số 0 ở nhóm cancelled là do \emph{dữ liệu}, không phải lỗi pipeline.
 
@@ -67,7 +69,7 @@ Chạy pipeline dưới 2 cấu hình (AQE tắt để đọc plan tĩnh; xem c�
 \end{tabular}
 \end{center}
 
-\textbf{(a)} 3 bảng đi join đều tí hon (185 mã hợp lệ, bảng đếm mã/đơn, 40 ngưỡng bang) $<$ 10 MB $\to$ Spark broadcast cả 3, khỏi shuffle bảng đơn. Ép \texttt{threshold=-1} buộc SortMergeJoin: mỗi join thêm 1 Exchange + 2 Sort hai phía (Sort: $1 \to 7$).
+\textbf{(a)} 3 bảng đi join đều tí hon (185 mã hợp lệ, bảng đếm mã/đơn, 36 ngưỡng bang) $<$ 10 MB $\to$ Spark broadcast cả 3, khỏi shuffle bảng đơn. Ép \texttt{threshold=-1} buộc SortMergeJoin: mỗi join thêm 1 Exchange + 2 Sort hai phía (Sort: $1 \to 7$).
 
 \textbf{(b)} Mặc định: 5 shuffle Exchange = 4 \texttt{groupBy} (mã KM, row\_id, state, city) + 1 \texttt{rangepartitioning} của \texttt{orderBy} cuối. Broadcast không tạo shuffle bảng lớn nên chỉ có 3 BroadcastExchange bảng nhỏ. Tắt broadcast: 8 Exchange (3 join giờ phải shuffle cả hai phía) và 7 Sort.
 
