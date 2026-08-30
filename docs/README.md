@@ -97,7 +97,7 @@ cd /lab/src
 mvn clean package
 ```
 
-Kết quả: `target/lab3-1.0.jar`, đã đóng gói sẵn `scala-library` và `opencsv`. Bốn task
+Kết quả: `target/lab3-1.0.jar`, đã đóng gói sẵn `scala-library` và thư viện đọc CSV. Bốn task
 dùng chung file jar này, phân biệt bằng tên class.
 
 ---
@@ -170,6 +170,5 @@ Bốn file kết quả cũng được cung cấp qua Google Drive — xem `drive
 ## 7. Giả định khi đọc đề
 
 Đề có một số chỗ chưa nói rõ: định nghĩa "shipped", cách chuẩn hoá tên bang, thang bậc
-size, xử lý giá trị null, và cách hiểu vài điều kiện lọc. Nhóm chốt từng chỗ theo một
-cách nhất quán cho cả bốn bài; phần biện luận cho mỗi quyết định, kèm số liệu đo được
-nếu hiểu theo cách khác, trình bày trong `Report.pdf`.
+size, xử lý giá trị null, và cách hiểu vài điều kiện lọc. Cách hiểu đã chọn cho từng bài,
+kèm biện luận và số liệu đo được nếu hiểu theo cách khác, trình bày trong `Report.pdf`.

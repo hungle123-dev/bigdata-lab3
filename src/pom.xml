@@ -46,7 +46,9 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- CSV parser hiểu quote cho MapReduce (Spark tự có) -->
+    <!-- opencsv: parser hiểu quote, cho Task 1-1/1-2 (MapReduce) parse CSV.
+         Cột promotion-ids chứa dấu phẩy trong ngoặc kép nên line.split(",") sẽ sai.
+         Spark đã có reader riêng nên Task 2-1/2-2 không cần. -->
     <dependency>
       <groupId>com.opencsv</groupId>
       <artifactId>opencsv</artifactId>

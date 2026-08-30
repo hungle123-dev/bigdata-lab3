@@ -1,10 +1,9 @@
-# Bắt script shell + source luôn checkout LF (nhóm chạy Windows, code chạy trong Linux container)
+# Source + script luôn checkout LF (nhóm chạy Windows, code chạy trong Linux container)
 *.sh text eol=lf
 entrypoint* text eol=lf
 *.scala text eol=lf
 *.xml text eol=lf
 *.md text eol=lf
-*.tex text eol=lf
 *.ipynb text eol=lf
 
 # Binary — không diff/merge, không đổi line ending

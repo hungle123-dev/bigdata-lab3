@@ -21,7 +21,11 @@ docs/
 └── README.md               bản nộp cho giảng viên
 
 data/asr.csv                dữ liệu đã clean, input chung 4 task
+out/                        kết quả chạy (không commit)
+Lab03/                      đề bài gốc — PDF đề + slide. Chỉ tham khảo, không nộp.
 ```
+
+Đề bài: `Lab03/Lab 3 - MR-Spark.pdf`. Slide tham khảo: `Lab03/Lab3_Slide_ref.pdf`.
 
 Mỗi task là một file Scala độc lập. Ai làm task nào chỉ sửa file của task đó.
 
@@ -31,7 +35,8 @@ Mỗi task là một file Scala độc lập. Ai làm task nào chỉ sửa file
 chuẩn hoá `ship-state`, loại dòng thiếu state và state không hợp lệ.
 128.975 → 128.941 dòng, 36 bang.
 
-Cả 4 task dùng chung file này. Đọc đề để tự chốt cách hiểu các điều kiện.
+Cả 4 task dùng chung file này. Mỗi người tự đọc đề để chốt cách hiểu các điều kiện của
+bài mình.
 
 ## Chạy
 
