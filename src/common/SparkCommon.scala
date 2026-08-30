@@ -7,7 +7,7 @@ import org.apache.spark.sql.functions._
  */
 object SparkCommon {
 
-  /** SparkSession local; shuffle partitions hạ xuống 16 (dữ liệu 69MB, mặc định 200 phí). */
+  /** SparkSession local; shuffle partitions hạ xuống 16 (dữ liệu ~129k dòng, mặc định 200 phí). */
   def session(app: String): SparkSession =
     SparkSession.builder()
       .appName(app)
@@ -30,7 +30,7 @@ object SparkCommon {
   /**
    * Chuẩn hoá cột dùng chung + thêm cột dẫn xuất. Trả DF có thêm:
    *   d      : Date (parse MM-dd-yy)          — bẫy ③
-   *   state  : upper(trim(ship-state))        — bẫy ② (69→47)
+   *   state  : upper(trim(ship-state))        — input đã clean state (36 bang)
    *   city   : upper(trim(ship-city))
    *   amount : Amount ép Double (null giữ null) — bẫy ⑤
    *   nPromo : số mã trong promotion-ids       — parser đã tách bằng multiLine

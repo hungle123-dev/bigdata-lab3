@@ -1,11 +1,1 @@
-Google Drive folder chứa 4 file kết quả (điền link thật trước khi nộp):
 https://drive.google.com/drive/folders/REPLACE_WITH_REAL_LINK
-
-Cấu trúc bắt buộc trên Drive (folder tên = RepresentativeID):
-23127371/
-├── Task_1-1.csv
-├── Task_1-2.csv
-├── Task_2-1.parquet
-└── Task_2-2.parquet
-
-LƯU Ý: khoá quyền edit sau deadline (sửa sau = huỷ điểm).

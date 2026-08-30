@@ -31,13 +31,13 @@ India, 31/03→29/06/2022).
 ```
 bigdata-lab3/
 ├── ASSUMPTIONS.md          ← CHỐT CHUNG: 5 bẫy dữ liệu + 3 chỗ mập mờ. ĐỌC TRƯỚC KHI CODE.
-├── clean.ipynb             ← tiền xử lý: chuẩn hoá ship-state → data/asr.csv
 ├── README.md               ← file này
 ├── data/
 │   └── asr.csv             ← dữ liệu ĐÃ CLEAN (input chung 4 task, đã commit)
 ├── out/                    ← kết quả chạy (gitignored, build lại được)
 ├── src/
 │   ├── pom.xml             ← build chung 4 task (Hadoop + Spark + opencsv)
+│   ├── clean.ipynb         ← tiền xử lý: chuẩn hoá ship-state → data/asr.csv
 │   ├── docker/             ← Dockerfile, docker-compose, config Hadoop
 │   ├── common/
 │   │   ├── MRCommon.scala      ← tầng chung MapReduce (parse CSV, ngày, size)
@@ -50,9 +50,15 @@ bigdata-lab3/
 ├── scripts/
 │   └── package-submission.sh   ← đóng gói 23127371.zip đúng cây nộp
 ├── docs/
+│   ├── README.md               ← bản nộp cho giảng viên
 │   └── drive_link.txt          ← link Drive chứa 4 file kết quả
-└── Lab03/                  ← đề bài PDF + slide tham khảo
+└── Lab03/                  ← ĐỀ BÀI GỐC (PDF + slide + CSV gốc). Chỉ để tham khảo,
+                              KHÔNG phải code nhóm, KHÔNG nộp.
 ```
+
+`Lab03/` là nguyên gói đề tải từ Moodle: 2 file PDF (đề + slide) và `Amazon Sale Report.csv`
+(dữ liệu gốc, gitignored vì 66MB). Không sửa gì trong đó. Khi cần regenerate dữ liệu sạch,
+copy CSV gốc sang `data/` rồi chạy `src/clean.ipynb`.
 
 ## 2. Chia việc nhóm
 
@@ -67,7 +73,7 @@ bigdata-lab3/
 
 ## 3. Dữ liệu — QUAN TRỌNG
 
-`data/asr.csv` là bản **đã tiền xử lý** bằng `clean.ipynb`, KHÔNG phải file gốc:
+`data/asr.csv` là bản **đã tiền xử lý** bằng `src/clean.ipynb`, KHÔNG phải file gốc:
 - Chuẩn hoá `ship-state`: gộp cách viết trùng (`NEW DELHI`→`DELHI`, `ORISSA`→`ODISHA`,
   `RJ`→`RAJASTHAN`, `PB`→`PUNJAB`…), sửa lỗi chính tả.
 - Loại 33 dòng thiếu `ship-state` **và 1 dòng state không hợp lệ `APO`** (index=45187).
@@ -75,7 +81,7 @@ bigdata-lab3/
 
 **Cả 4 task PHẢI dùng chung `data/asr.csv` này.** Không ai dùng file gốc `Amazon Sale Report.csv`
 — nếu không, chuẩn hoá state lệch nhau giữa các task → bài ghép rời, mất điểm nhất quán.
-State normalization đã làm ở `clean.ipynb`, KHÔNG lặp lại trong code Spark/MapReduce.
+State normalization đã làm ở `src/clean.ipynb`, KHÔNG lặp lại trong code Spark/MapReduce.
 
 ---
 
