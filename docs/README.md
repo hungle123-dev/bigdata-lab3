@@ -23,9 +23,6 @@ dùng DataFrame/Dataset API, không dùng Spark SQL dạng chuỗi.
 │   ├── pom.xml             Build chung 4 task (Maven + shade plugin)
 │   ├── clean.ipynb         Tiền xử lý dữ liệu gốc → asr.csv
 │   ├── docker/             Dockerfile, docker-compose.yml, config Hadoop
-│   ├── common/
-│   │   ├── MRCommon.scala      Tầng chung MapReduce
-│   │   └── SparkCommon.scala   Tầng chung Spark
 │   ├── Task_1-1/Task11.scala
 │   ├── Task_1-2/Task12.scala
 │   ├── Task_2-1/Task21.scala
@@ -36,9 +33,9 @@ dùng DataFrame/Dataset API, không dùng Spark SQL dạng chuỗi.
     └── README.md           File này
 ```
 
-Ngoài cấu trúc mẫu của đề, bài nộp có thêm hai thư mục. `common/` chứa phần đọc và
-chuẩn hoá dữ liệu dùng chung, để bốn task hiểu dữ liệu theo cùng một cách thay vì
-lặp lại logic ở từng bài. `docker/` là môi trường chạy, cần thiết để tái lập kết quả.
+Mỗi task là một file Scala độc lập. Ngoài cấu trúc mẫu của đề, `src/` có thêm `pom.xml`
+để biên dịch, `docker/` để dựng lại môi trường Hadoop và Spark, và `clean.ipynb` để sinh
+lại dữ liệu đầu vào — ba thứ cần thiết để chạy và tái lập kết quả.
 
 ---
 
