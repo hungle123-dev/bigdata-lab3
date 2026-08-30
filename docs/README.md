@@ -97,8 +97,8 @@ cd /lab/src
 mvn clean package
 ```
 
-Kết quả: `target/lab3-1.0.jar`, đã đóng gói sẵn `scala-library` và thư viện đọc CSV. Bốn task
-dùng chung file jar này, phân biệt bằng tên class.
+Kết quả: `target/lab3-1.0.jar`, đã đóng gói sẵn `scala-library`. Bốn task dùng chung file
+jar này, phân biệt bằng tên class.
 
 ---
 

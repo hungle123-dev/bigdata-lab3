@@ -46,14 +46,6 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- opencsv: parser hiểu quote, cho Task 1-1/1-2 (MapReduce) parse CSV.
-         Cột promotion-ids chứa dấu phẩy trong ngoặc kép nên line.split(",") sẽ sai.
-         Spark đã có reader riêng nên Task 2-1/2-2 không cần. -->
-    <dependency>
-      <groupId>com.opencsv</groupId>
-      <artifactId>opencsv</artifactId>
-      <version>5.9</version>
-    </dependency>
   </dependencies>
 
   <build>
@@ -72,7 +64,7 @@
           <scalaVersion>${scala.version}</scalaVersion>
         </configuration>
       </plugin>
-      <!-- Bundle scala-library + opencsv vào jar (Spark/Hadoop không cung cấp) -->
+      <!-- Bundle scala-library vào jar (Spark/Hadoop không cung cấp) -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
