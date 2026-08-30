@@ -1,6 +1,3 @@
-# ---- Dữ liệu ----
-data/Amazon Sale Report.csv
-
 # ---- Kết quả chạy ----
 out/
 
@@ -9,15 +6,11 @@ target/
 *.class
 dependency-reduced-pom.xml
 
-# ---- Riêng của tôi, không đẩy lên ----
-scripts/
-ASSUMPTIONS.md
-build_submission/
+# ---- Đóng gói nộp bài ----
 *.zip
 
-# ---- Đề bài gốc ----
-Lab03/Amazon Sale Report.csv
-shapes.parquet(legacy)
+# ---- Chưa viết (thêm khi 4 task xong) ----
+docs/README.md
 
 # ---- OS / editor ----
 .DS_Store

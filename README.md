@@ -17,12 +17,12 @@ src/
 └── clean.ipynb             tiền xử lý → data/asr.csv
 
 docs/
-├── drive_link.txt          link Drive chứa 4 file kết quả
-└── README.md               bản nộp cho giảng viên
+└── drive_link.txt          link Drive chứa 4 file kết quả
+                            (Report.pdf và README.md thêm vào khi 4 task xong)
 
 data/asr.csv                dữ liệu đã clean, input chung 4 task
 out/                        kết quả chạy (không commit)
-Lab03/                      đề bài gốc — PDF đề + slide. Chỉ tham khảo, không nộp.
+Lab03/                      đề bài gốc — PDF đề, slide, CSV gốc. Chỉ tham khảo, không nộp.
 ```
 
 Đề bài: `Lab03/Lab 3 - MR-Spark.pdf`. Slide tham khảo: `Lab03/Lab3_Slide_ref.pdf`.
@@ -35,8 +35,11 @@ Mỗi task là một file Scala độc lập. Ai làm task nào chỉ sửa file
 chuẩn hoá `ship-state`, loại dòng thiếu state và state không hợp lệ.
 128.975 → 128.941 dòng, 36 bang.
 
-Cả 4 task dùng chung file này. Mỗi người tự đọc đề để chốt cách hiểu các điều kiện của
-bài mình.
+**Cả 4 task dùng chung `data/asr.csv` này**, không dùng file gốc. Mỗi người tự đọc đề để
+chốt cách hiểu các điều kiện của bài mình.
+
+File gốc `Amazon Sale Report.csv` có sẵn trong `data/` và `Lab03/` (2 bản giống nhau) —
+chỉ cần khi muốn chạy lại `src/clean.ipynb` để sinh lại `asr.csv`.
 
 ## Chạy
 
@@ -66,6 +69,15 @@ kết quả ghi vào `/lab/out`.
 
 ## Nộp
 
-- ZIP: folder `23127371/` chứa `src/` + `docs/`
-- Drive: folder `23127371/` chứa 4 file kết quả
+Cây ZIP theo đề (trang 6-7):
+
+```
+23127371/
+├── src/    Task_1-1..2-2, pom.xml, docker/, clean.ipynb
+└── docs/   Report.pdf, drive_link.txt, README.md (optional)
+```
+
+- Drive: folder `23127371/` chứa đúng 4 file kết quả, dán link vào `docs/drive_link.txt`
 - Report viết trên Overleaf hoặc Google Docs, xuất PDF vào `docs/Report.pdf`
+- Không kèm `data/`, `out/`, `target/`, `Lab03/` vào ZIP
+- Khoá quyền edit Drive sau deadline (sửa sau = huỷ điểm)
