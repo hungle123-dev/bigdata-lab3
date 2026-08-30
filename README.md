@@ -70,8 +70,8 @@ bigdata-lab3/
 `data/asr.csv` là bản **đã tiền xử lý** bằng `clean.ipynb`, KHÔNG phải file gốc:
 - Chuẩn hoá `ship-state`: gộp cách viết trùng (`NEW DELHI`→`DELHI`, `ORISSA`→`ODISHA`,
   `RJ`→`RAJASTHAN`, `PB`→`PUNJAB`…), sửa lỗi chính tả.
-- Loại 33 dòng thiếu `ship-state`.
-- Kết quả: **128.975 → 128.942 dòng, 47 → 37 bang**.
+- Loại 33 dòng thiếu `ship-state` **và 1 dòng state không hợp lệ `APO`** (index=45187).
+- Kết quả: **128.975 → 128.941 dòng, 36 bang** (34 dòng bị loại tổng cộng).
 
 **Cả 4 task PHẢI dùng chung `data/asr.csv` này.** Không ai dùng file gốc `Amazon Sale Report.csv`
 — nếu không, chuẩn hoá state lệch nhau giữa các task → bài ghép rời, mất điểm nhất quán.

@@ -12,9 +12,10 @@
  * Bộ ba (count, sum, sumsq) cộng dồn được -> Combiner gộp tại map + tính variance.
  *
  * CẦN Job 0 chạy trước: đếm tổng đơn bought mỗi bang -> quyết L. Phát qua Distributed Cache.
- *   (chỉ MAHARASHTRA 19.103, KARNATAKA 14.950 vượt 10.000 trên 46 bang)
+ *   (input clean 128.941 dòng: bought=109.566 trên 36 bang; chỉ MAHARASHTRA 19.103,
+ *    KARNATAKA 14.950 vượt 10.000 -> dùng cửa sổ 5)
  *
- * Xuất Task_1-1.csv (~3.696 dòng), ngày tới 2022-07-09 (= 29/06 + 10).
+ * Xuất Task_1-1.csv (expected 3.473 dòng), ngày tới 2022-07-09 (= 29/06 + 10).
  *
  * TODO(TV1):
  *   - Job0: Mapper đếm bought/bang; Reducer ghi bảng bang->L ra HDFS.

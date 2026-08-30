@@ -45,8 +45,8 @@ Dữ liệu gốc `Amazon Sale Report.csv` được làm sạch bằng `clean.ip
 - Chuẩn hoá cột `ship-state`: gộp các cách viết trùng của cùng một bang
   (`NEW DELHI`→`DELHI`, `ORISSA`→`ODISHA`, `RJ`→`RAJASTHAN`, `PB`→`PUNJAB`,
   `PONDICHERRY`→`PUDUCHERRY`…), sửa lỗi chính tả, ánh xạ mã bang theo thành phố.
-- Loại các dòng thiếu `ship-state`.
-- Kết quả: `asr.csv` (128.975 → 128.942 dòng; 47 → 37 bang).
+- Loại các dòng thiếu `ship-state` và dòng có state không hợp lệ (`APO`).
+- Kết quả: `asr.csv` (128.975 → 128.941 dòng; 36 bang; loại 34 dòng).
 
 Cả 4 task đọc chung `asr.csv` này. Việc chuẩn hoá bang được thực hiện một lần ở
 bước tiền xử lý, không lặp lại trong mã Spark/MapReduce.

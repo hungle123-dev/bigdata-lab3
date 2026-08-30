@@ -4,8 +4,10 @@
  * Đề: median của "variety" theo mỗi (bang, tháng).
  *   - variety của 1 style = số SKU PHÂN BIỆT của style đó trong (bang, tháng)
  *   - chỉ xét style đã từng bán size >= XXL  (MRCommon.rankOf(size) >= 6 — KHÔNG alphabet!)
- *     alphabet đặt 3XL trước XXL -> 18.096 vs 34.627 dòng, lệch gần 2×
- *   - "style từng bán XXL": CHỐT TOÀN CỤC (ASSUMPTIONS C2) — report ghi cả 2 cách + 40/128
+ *     alphabet đặt 3XL trước XXL -> sai; thang số cho >=XXL = 34.621 dòng (input clean)
+ *   - "style từng bán XXL": CHỐT TOÀN CỤC (ASSUMPTIONS C2) — report ghi cả 2 cách
+ *     (số trên clean: 1.103 qualifying styles; toàn cục 129 nhóm, trong-nhóm 122 nhóm,
+ *      41/122 nhóm chung lệch median; MAHARASHTRA 2022-04: toàn cục=3.0 trong-nhóm=4.0)
  *   - median số phần tử chẵn -> trung bình 2 phần tử giữa
  *
  * MapReduce 2 job:
@@ -13,7 +15,7 @@
  *         khi duyệt tuần tự (không cần HashSet trong bộ nhớ).
  *   Job2: khoá (tháng, bang) -> sort các variety, lấy giữa.
  *
- * Xuất Task_1-2.csv (~128 dòng theo cách trong-nhóm / khác nếu toàn cục).
+ * Xuất Task_1-2.csv (toàn cục 129 dòng / trong-nhóm 122 dòng).
  *
  * TODO(TV2):
  *   - Xác định style đủ điều kiện (>= XXL) toàn cục: có thể 1 job phụ hoặc filter khi map.

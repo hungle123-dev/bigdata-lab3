@@ -8,12 +8,12 @@ import org.apache.spark.sql.DataFrame
  *   (1) có >= 3 promotion HỢP LỆ (active period >= 2 ngày; kể cả mã Amazon)
  *   (2) amount < trung bình đơn Merchant + Courier=Shipped của BANG đó
  *
- * Pipeline 4 khối — xem ASSUMPTIONS.md mục C4:
+ * Pipeline 4 khối — xem ASSUMPTIONS.md mục C4 (số trên input đã clean, 128.941 dòng):
  *   A  tuổi thọ mã KM   groupBy(promo).agg(min/max)   284 -> 185 mã hợp lệ
- *   B  ngưỡng bang      Merchant AND Courier=Shipped  -> 36 bang (input đã clean state)
+ *   B  ngưỡng bang      Merchant AND Courier=Shipped  31.871 dòng -> 36 bang
  *   C  tập đơn          LEFT join A (đếm mã hợp lệ), LEFT join B (so ngưỡng)  6.906 đơn
  *   D  gộp city         % đơn thoả; input asr.csv đã tiền xử lý (clean.ipynb),
- *                       1.639 cách viết city thô -> 1.434 city chuẩn hoá
+ *                       candidate city-null = 0, 1.639 cách viết city thô -> 1.434 city
  *
  * Đáp số kỳ vọng: 0% mọi thành phố (đã chứng minh — KHÔNG nới điều kiện).
  * Report (a)(b)(c): dựng lại pipeline dưới 2 conf, explain mỗi lần.
@@ -73,8 +73,8 @@ object Task21 {
              col("amount") < col("state_avg"), lit(1)).otherwise(lit(0)))
 
     // KHỐI D: gộp theo thành phố -> %
-    // Loại đơn thiếu city (3/6.909 ứng viên thiếu ship-city) -> mẫu số 6.906.
-    // "each city" không tính null. 1.639 cách viết thô -> 1.434 city sau upper(trim).
+    // Input đã clean nên candidate city-null = 0 (đơn thiếu state đã loại ở clean.ipynb).
+    // Filter city null/rỗng giữ lại cho an toàn. 1.639 cách viết -> 1.434 city sau upper(trim).
     enriched
       .filter(col("city").isNotNull && col("city") =!= "")
       .groupBy("city")

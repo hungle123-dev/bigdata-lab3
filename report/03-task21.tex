@@ -9,7 +9,9 @@ Với mỗi \textbf{thành phố}, tính \% đơn \emph{Cancelled + Standard} th
 Hai mức địa lý khác nhau trong một câu: ngưỡng tính theo \textbf{bang}, kết quả gộp theo \textbf{thành phố}.
 Dataset không có ngày hiệu lực KM — active period phải \emph{suy từ dữ liệu}: mỗi mã, ngày xuất hiện đầu/cuối trên toàn bộ đơn.
 
-\textbf{Dữ liệu đầu vào:} nhóm tiền xử lý \texttt{Amazon Sale Report.csv} bằng \texttt{clean.ipynb} $\to$ \texttt{asr.csv}: chuẩn hoá \texttt{ship-state} (gộp các cách viết trùng như \texttt{NEW DELHI}$\to$\texttt{DELHI}, \texttt{ORISSA}$\to$\texttt{ODISHA}, \texttt{RJ}$\to$\texttt{RAJASTHAN}, sửa lỗi chính tả) và loại 33 dòng thiếu \texttt{ship-state} (128.975 $\to$ 128.942 dòng, 47 $\to$ 37 bang). State normalization làm ở tiền xử lý, không lặp lại trong Spark.
+\textbf{Dữ liệu đầu vào:} nhóm tiền xử lý \texttt{Amazon Sale Report.csv} (128.975 dòng, raw) bằng \texttt{clean.ipynb} $\to$ \texttt{data/asr.csv}: chuẩn hoá \texttt{ship-state} (gộp cách viết trùng \texttt{NEW DELHI}$\to$\texttt{DELHI}, \texttt{ORISSA}$\to$\texttt{ODISHA}, \texttt{RJ}$\to$\texttt{RAJASTHAN}\ldots), loại \textbf{33 dòng thiếu state} và \textbf{1 dòng state không hợp lệ \texttt{APO}} --- tổng \textbf{34 dòng} bị loại $\to$ \textbf{128.941 dòng, 36 bang}. State normalization làm ở tiền xử lý, không lặp lại trong Spark.
+
+\textbf{Lưu ý output khác slide/reference:} slide tham khảo tính trên dataset \emph{raw} (chưa làm sạch), nhóm dùng \emph{canonical cleaned input} nên một số con số trung gian (số bang, số dòng bought\ldots) lệch nhẹ. Đây là hệ quả của tiền xử lý đã thống nhất, không phải sai khác logic.
 
 \subsection*{(1) Phân rã thành 4 khối + lý do}
 \begin{center}
@@ -18,7 +20,7 @@ Dataset không có ngày hiệu lực KM — active period phải \emph{suy từ
 Khối & Việc & Phép & Kết quả \\
 \hline
 A & Tuổi thọ mã KM & \texttt{groupBy(promo).agg(min,max)}, lọc $\ge 2$ ngày & 284 $\to$ \textbf{185} mã \\
-B & Ngưỡng bang & \texttt{Merchant AND Courier=Shipped}, \texttt{groupBy(state).avg} & \textbf{36} bang \\
+B & Ngưỡng bang & \texttt{Merchant AND Courier=Shipped}, \texttt{groupBy(state).avg} & 31.871 dòng $\to$ \textbf{36} bang \\
 C & Tập đơn + đếm mã hợp lệ & lọc ứng viên; LEFT join A; LEFT join B & \textbf{6.906} đơn \\
 D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.434} city \\
 \hline
@@ -30,7 +32,7 @@ D & Gộp thành phố & \texttt{groupBy(city)}, \% đơn thoả & \textbf{1.434
   \item Khối A dùng \texttt{groupBy().agg(min,max)} \emph{không} window function: cần thu 129k dòng về 284 mã (bảng nhỏ đi), window giữ nguyên số dòng và thêm một shuffle vô ích.
   \item \textbf{LEFT join} (không INNER): đơn không có mã KM vẫn phải nằm ở \emph{mẫu số} của phần trăm; INNER làm mất đơn $\to$ \% sai. Sau join, \texttt{n\_valid} null $\to$ \texttt{coalesce(0)}.
   \item Mã Amazon \textbf{vẫn đếm} (270/284 mã) — đề ghi rõ ``all promotions including those issued by Amazon''.
-  \item Chuẩn hoá bang làm ở tiền xử lý (\texttt{clean.ipynb}, 47 $\to$ 37 bang). Task 2-1 chỉ \texttt{upper(trim)} thành phố. Trong tập ứng viên: 1.639 cách viết \texttt{ship-city} thô $\to$ \textbf{1.434} city chuẩn hoá. Tập ứng viên còn \textbf{6.906} đơn (các đơn thiếu \texttt{ship-state} đã bị loại ở tiền xử lý), mọi đơn đều có \texttt{ship-city} $\to$ mẫu số \textbf{6.906}.
+  \item Chuẩn hoá bang làm ở tiền xử lý (\texttt{clean.ipynb}, 36 bang). Task 2-1 chỉ \texttt{upper(trim)} thành phố. Trong tập ứng viên: 1.639 cách viết \texttt{ship-city} thô $\to$ \textbf{1.434} city chuẩn hoá. Tập ứng viên có \textbf{6.906} đơn, mọi đơn đều có \texttt{ship-city} (candidate city-null = 0, vì đơn thiếu state đã bị loại ở tiền xử lý) $\to$ mẫu số \textbf{6.906}.
   \item Khoá đơn dùng cột \texttt{index} có sẵn (int duy nhất 0..128974), \emph{không} dùng \texttt{monotonically\_increasing\_id} (không ổn định giữa các lần đánh giá).
 \end{itemize}
 

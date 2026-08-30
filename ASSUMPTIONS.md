@@ -5,13 +5,26 @@
 >
 > File này ĐÓNG BĂNG sau họp bước 0. Muốn sửa → báo cả nhóm. Copy thẳng vào Report.
 
-Dataset: `Amazon Sale Report.csv` — **128.975 dòng, 24 cột**, 31/03/2022 → 29/06/2022 (91 ngày).
-Số dưới đây đo bằng pandas trên chính file này.
+Dataset gốc: `Amazon Sale Report.csv` — **128.975 dòng** (raw, before cleaning), 24 cột, 31/03→29/06/2022 (91 ngày).
 
-> **Tiền xử lý (clean.ipynb):** nhóm chuẩn hoá `ship-state` (gộp cách viết trùng: `NEW DELHI→DELHI`,
-> `ORISSA→ODISHA`, `RJ→RAJASTHAN`, `PB→PUNJAB`, sửa lỗi chính tả…) và **loại 33 dòng thiếu ship-state**
-> → `asr.csv` **128.942 dòng, 37 bang**. Đây là INPUT CHUNG của cả 4 task. State normalization
-> làm ở đây, KHÔNG lặp lại trong Spark/MapReduce.
+> **Tiền xử lý (clean.ipynb) → `data/asr.csv` = CANONICAL INPUT của cả 4 task.**
+> - `upper(trim)` + map alias `ship-state` (`NEW DELHI→DELHI`, `ORISSA→ODISHA`, `RJ→RAJASTHAN`, `PB→PUNJAB`…).
+> - Loại **33 dòng thiếu ship-state** + **1 dòng state không hợp lệ `APO`** (index=45187; APO không phải bang, KHÔNG đoán map).
+> - Kết quả: **128.941 dòng, 36 bang**. Mọi số dưới đây đo trên bản CLEAN này (trừ chỗ ghi rõ "raw").
+> - State normalization làm ở tiền xử lý, KHÔNG lặp lại trong Spark/MapReduce.
+
+Checkpoint trên bản clean (128.941 dòng):
+
+| Đại lượng | Giá trị |
+|---|---|
+| Status == "Shipped" | 77.788 |
+| Status contains "shipped" | 109.670 |
+| Qty == 0 | 12.801 |
+| Amount null | 7.792 |
+| bought (shipped & Qty>0) | 109.566 · 36 bang |
+| Merchant + Courier=Shipped | 31.871 dòng · 36 ngưỡng bang |
+| Cancelled + Standard | 6.906 |
+| SKU-month groups | 16.486 · max 426 |
 
 ---
 
@@ -19,11 +32,11 @@ Số dưới đây đo bằng pandas trên chính file này.
 
 | # | Bẫy | Chốt | Số đo |
 |---|-----|------|-------|
-| ① | `Status` có 13 giá trị, 10 cái chứa "shipped" | "shipped" = `lower(Status)` **contains** "shipped" (KHÔNG `== "Shipped"`) | `==`: 77.804 dòng · contains: **109.696** |
-| ② | Tên bang 69 cách viết | chuẩn hoá `upper(trim(ship-state))` | 69 → **47** giá trị |
+| ① | `Status` có 13 giá trị, 10 cái chứa "shipped" | "shipped" = `lower(Status)` **contains** "shipped" (KHÔNG `== "Shipped"`) | `==`: 77.788 · contains: **109.670** (clean) |
+| ② | Tên bang nhiều cách viết | chuẩn hoá ở clean.ipynb (raw 69 cách viết → **36 bang** sau clean) | raw 69→47 upper(trim); +map alias & loại APO → **36** |
 | ③ | Ngày format **MM-DD-YY** | parse `MM-dd-yy` (`04-30-22` = 30/04/2022) | — |
 | ④ | Size không sort theo alphabet | thang số: XS=1 S=2 M=3 L=4 XL=5 XXL=6 3XL=7 4XL=8 5XL=9 6XL=10; `Free`=0 (loại khỏi so sánh ≥) | alphabet vs thang số lệch gần 2× |
-| ⑤ | NULL khắp nơi | `Qty=0`: 12.807 dòng · `Amount` null: 7.795 dòng → dùng `coalesce` tường minh | — |
+| ⑤ | NULL khắp nơi | `Qty=0`: 12.801 · `Amount` null: 7.792 → dùng `coalesce` tường minh | (clean) |
 
 **Bẫy parser (bài 2-1, 2-2):** cột `promotion-ids` chứa dấu phẩy TRONG dấu ngoặc kép.
 Phải dùng CSV parser hiểu quote (Spark: `.option("multiLine",true).option("quote","\"").option("escape","\"")`;
@@ -42,13 +55,15 @@ MapReduce: opencsv hoặc parser tự viết). `line.split(",")` là SAI.
 
 ### C1 · Bài 1-1: variance tính trên cột nào?
 - **CHỐT: `Amount`.** Đề phân biệt "the *quantity* is non-zero" (cột Qty) vs "variance of the purchased *amount*" (cột Amount). Có cột tên đúng `Amount`.
-- Amount có 7.795 dòng null → tính variance chỉ trên đơn Amount không null, NHƯNG vẫn đếm đơn đó vào tần suất (bought định nghĩa bằng Status+Qty).
-- Report ghi: nếu hiểu là Qty thì 204/3.696 dòng (5,5%) ra khác.
+- Amount có 7.792 dòng null → tính variance chỉ trên đơn Amount không null, NHƯNG vẫn đếm đơn đó vào tần suất (bought định nghĩa bằng Status+Qty).
+- Bought: 109.566 dòng, 36 bang. Chỉ MAHARASHTRA (19.103) + KARNATAKA (14.950) dùng cửa sổ 5 ngày.
+- Expected output: **3.473 dòng**. Report ghi: nếu hiểu là Qty thì **182/3.473** dòng ra winner khác.
 
 ### C2 · Bài 1-2: "style từng bán ≥ XXL" xét ở đâu? ⚠️ NẶNG NHẤT
 - **CHỐT: TOÀN CỤC trong file xuất** (style bán XXL ở bất kỳ đâu → đủ điều kiện mọi nơi).
 - Lý do: slide xác nhận file đáp án giảng viên làm toàn cục → dễ khớp 0,175đ correctness.
-- Câu chữ đề ("within a specific region") nghiêng TRONG NHÓM → report trình bày cả 2, ghi số lệch **40/128 nhóm (31%)**.
+- Câu chữ đề ("within a specific region") nghiêng TRONG NHÓM → report trình bày cả 2.
+- Số đo (clean): ≥XXL rows = **34.621**; qualifying styles = **1.103**; output toàn cục = **129** nhóm, trong-nhóm = **122** nhóm; **41/122** nhóm chung lệch median. MAHARASHTRA 2022-04: toàn cục=3.0, trong-nhóm=4.0.
 - Median số phần tử chẵn → trung bình 2 phần tử giữa (khớp numpy/Spark).
 
 ### C3 · Bài 2-2: "exact percentile" định nghĩa thế nào?
@@ -62,7 +77,7 @@ MapReduce: opencsv hoặc parser tự viết). `line.split(",")` là SAI.
 - Đếm "đơn" theo **dòng CSV** (không gộp Order ID). Slide xác nhận gộp Order ID cũng ra 0.
 - "active period ≥ 2 days" = `last − first ≥ 2` (between = phép trừ) → 185 mã hợp lệ. Report ghi: `≥ 1` → 233 mã.
 - **LEFT join** (đơn không KM vẫn ở mẫu số). Mã Amazon vẫn đếm (270/284 mã).
-- Input dùng bản clean (clean.ipynb): 36 bang merchant-shipped, 6.906 ứng viên, 1.434 city.
+- Số đo (clean): 284 promotions, 185 valid, 270 Amazon-issued; Merchant+Shipped = 31.871 dòng → 36 ngưỡng bang; Cancelled+Standard = 6.906 đơn; candidate city-null = **0** (các đơn thiếu state đã bị loại ở clean); output 1.434 city, total_orders=6.906, qualified=0.
 - Đáp số **= 0% mọi thành phố** — đã chứng minh, KHÔNG nới điều kiện để ra số đẹp.
 
 ---
