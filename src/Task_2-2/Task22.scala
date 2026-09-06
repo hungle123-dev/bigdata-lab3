@@ -8,10 +8,11 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
  * For each SKU in each month (SKU, month):
  *   1. Count promotions for each order from promotion-ids column.
  *   2. Implement 2 methods for dynamic percentile threshold (P90 and P80):
- *      - Method 1 (Approximate): Using approx_percentile built-in function.
+ *      - Method 1 (Approximate): Using percentile_approx (Pure DataFrame API, no SQL string).
  *      - Method 2 (Exact): Using Spark Window functions (Nearest-Rank method).
  *   3. Calculate Population Standard Deviation (stddev_pop) of Amount for orders >= threshold.
  *   4. If qualified count < 2 or stddev_pop is null, set stddev = 0.0.
+ *   5. Perform 5-run benchmarking (plus 1 warm-up run) for statistical mean & stddev.
  */
 object Task22 {
 
@@ -42,12 +43,15 @@ object Task22 {
       .filter(col("sku").isNotNull && col("sku") =!= "" && col("month").isNotNull && col("month") =!= "")
   }
 
+  /**
+   * METHOD 1: Pure DataFrame API using percentile_approx function (no SQL strings).
+   */
   def computeApproxPercentiles(preparedDf: DataFrame): DataFrame = {
     val thresholds = preparedDf
       .groupBy("sku", "month")
       .agg(
-        expr("approx_percentile(n_promos, 0.90)").as("p90_thresh"),
-        expr("approx_percentile(n_promos, 0.80)").as("p80_thresh"),
+        percentile_approx(col("n_promos"), lit(0.90), lit(10000)).as("p90_thresh"),
+        percentile_approx(col("n_promos"), lit(0.80), lit(10000)).as("p80_thresh"),
         count("*").as("total_group_orders")
       )
 
@@ -86,6 +90,9 @@ object Task22 {
       .withColumnRenamed("p80_thresh", "p80_thresh_approx")
   }
 
+  /**
+   * METHOD 2: Spark Window Functions (Nearest-Rank Method)
+   */
   def computeExactPercentiles(preparedDf: DataFrame): DataFrame = {
     val windowSorted = Window.partitionBy("sku", "month").orderBy("n_promos")
     val windowGroup  = Window.partitionBy("sku", "month")
@@ -173,21 +180,39 @@ object Task22 {
       val totalRecords = prepared.count()
       println(s"[Task22] Total valid records: $totalRecords")
 
-      // --- METHOD 1: APPROXIMATE PERCENTILE ---
-      val t0Approx = System.currentTimeMillis()
-      val approxRes = computeApproxPercentiles(prepared)
-      val approxCount = approxRes.count()
-      val t1Approx = System.currentTimeMillis()
-      val durationApprox = t1Approx - t0Approx
-      println(s"[Task22] [Approximate] Completed in ${durationApprox} ms. SKU-Month groups: $approxCount")
+      // --- BENCHMARKING (1 Warm-up + 5 Measured Runs) ---
+      println("\n[Task22] Running Warm-up execution...")
+      computeApproxPercentiles(prepared).count()
+      computeExactPercentiles(prepared).count()
 
-      // --- METHOD 2: EXACT PERCENTILE ---
-      val t0Exact = System.currentTimeMillis()
-      val exactRes = computeExactPercentiles(prepared)
-      val exactCount = exactRes.count()
-      val t1Exact = System.currentTimeMillis()
-      val durationExact = t1Exact - t0Exact
-      println(s"[Task22] [Exact] Completed in ${durationExact} ms. SKU-Month groups: $exactCount")
+      println("\n[Task22] Executing 5-run Benchmark Loop...")
+      val numRuns = 5
+      val approxTimes = new Array[Long](numRuns)
+      val exactTimes = new Array[Long](numRuns)
+
+      var approxRes: DataFrame = null
+      var exactRes: DataFrame = null
+
+      for (i <- 0 until numRuns) {
+        val t0A = System.currentTimeMillis()
+        approxRes = computeApproxPercentiles(prepared)
+        val cA = approxRes.count()
+        val t1A = System.currentTimeMillis()
+        approxTimes(i) = t1A - t0A
+
+        val t0E = System.currentTimeMillis()
+        exactRes = computeExactPercentiles(prepared)
+        val cE = exactRes.count()
+        val t1E = System.currentTimeMillis()
+        exactTimes(i) = t1E - t0E
+        println(f"  Run ${i + 1}: Approx = ${approxTimes(i)}%4d ms | Exact = ${exactTimes(i)}%4d ms")
+      }
+
+      val approxMean = approxTimes.sum.toDouble / numRuns
+      val approxStd = math.sqrt(approxTimes.map(t => math.pow(t - approxMean, 2)).sum / (numRuns - 1))
+
+      val exactMean = exactTimes.sum.toDouble / numRuns
+      val exactStd = math.sqrt(exactTimes.map(t => math.pow(t - exactMean, 2)).sum / (numRuns - 1))
 
       // --- METRICS & COMPARISON ---
       val combined = approxRes.join(exactRes, Seq("sku", "month"), "inner")
@@ -197,18 +222,19 @@ object Task22 {
         .withColumn("p80_stddev_diff", abs(col("p80_stddev_approx") - col("p80_stddev_exact")))
         .orderBy("sku", "month")
 
+      val approxCount = approxRes.count()
       val diffP90ThreshCount = combined.filter(col("p90_thresh_diff") > 0.0001).count()
       val diffP90StddevCount = combined.filter(col("p90_stddev_diff") > 0.0001).count()
 
-      println(s"========== TASK 2.2 COMPARISON REPORT ==========")
-      println(s"- Execution Time (Approx): ${durationApprox} ms")
-      println(s"- Execution Time (Exact) : ${durationExact} ms")
-      println(s"- Total Groups (SKU, Month): $approxCount")
-      println(s"- P90 Threshold Diff Count : $diffP90ThreshCount / $approxCount (${(diffP90ThreshCount.toDouble / approxCount * 100).formatted("%.2f")}%)")
-      println(s"- P90 StdDev Diff Count    : $diffP90StddevCount / $approxCount (${(diffP90StddevCount.toDouble / approxCount * 100).formatted("%.2f")}%)")
-      println(s"==================================================")
+      println(f"\n==================== TASK 2.2 BENCHMARK REPORT (5-RUN MEAN ± STD) ====================")
+      println(f"- Approximate Method (percentile_approx) : $approxMean%6.2f ms ± $approxStd%5.2f ms")
+      println(f"- Exact Method (Window Functions)       : $exactMean%6.2f ms ± $exactStd%5.2f ms")
+      println(f"- Total SKU-Month Groups Analyzed        : $approxCount")
+      println(f"- Groups with P90 Threshold Difference   : $diffP90ThreshCount / $approxCount (${diffP90ThreshCount.toDouble / approxCount * 100}%5.2f%%)")
+      println(f"- Groups with P90 StdDev Difference      : $diffP90StddevCount / $approxCount (${diffP90StddevCount.toDouble / approxCount * 100}%5.2f%%)")
+      println(f"======================================================================================")
 
-      println(s"[Task22] Saving Parquet result to: $target")
+      println(s"\n[Task22] Saving Parquet result to: $target")
       writeSingleParquet(combined, out, target)
       println(s"[Task22] Task_2-2.parquet created successfully!")
 
