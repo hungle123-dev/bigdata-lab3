@@ -69,39 +69,35 @@ hdfs dfs -put -f asr.csv /input/
 
 ### Task 1.1 — MapReduce Dynamic Sliding Window
 
-Processes dynamic sliding windows ($w=5$ or $w=10$ days) across 46 states with algebraic triplet aggregation $\Sigma(1, Qty, Qty^2)$ and cascading tie-breaking rules.
+Processes dynamic sliding windows ($w=5$ or $w=10$ days) across 46 states with algebraic triplet aggregation $\Sigma(1, Qty, Qty^2)$ and cascading tie-breaking rules[cite: 1, 2].
 
 ```bash 
 # Navigate to Task 1-1 source directory from the project root
 cd src/Task_1-1
 
-# 1. Ensure input dataset is available on HDFS
-hdfs dfs -mkdir -p /lab2/input
-hdfs dfs -put -f /root/lab2/asr.csv /lab2/input/asr.csv
-
-# 2. Compile source code with Hadoop classpath
+# 1. Compile source code with Hadoop classpath
 mkdir -p classes
 scalac -classpath "$(hadoop classpath)" -d classes Task11.scala
 
-# 3. Package Fat JAR (bundle Scala runtime to prevent ClassNotFoundException on YARN workers)
+# 2. Package Fat JAR (bundle Scala runtime to prevent ClassNotFoundException on YARN workers)
 SCALA_LIB=$(find /usr -name "scala-library*.jar" 2>/dev/null | head -n 1)
 cd classes && jar -xf "$SCALA_LIB" && cd ..
 jar -cvf Task1_1.jar -C classes .
 
-# 4. Submit Hadoop MapReduce Job using full package and object name
+# 3. Submit Hadoop MapReduce Job using input from Section 3
 # Arguments: <input_hdfs_csv> <output_local_csv>
 hadoop jar Task1_1.jar fit.bigdata.lab2.Task1_1_SlidingWindowMR \
-  /lab2/input/asr.csv \
-  /root/lab2/Task_1-1.csv
+  /input/asr.csv \
+  Task_1-1.csv
 
-# 5. Quick Output Validation
-head -n 5 /root/lab2/Task_1-1.csv
-wc -l /root/lab2/Task_1-1.csv
+# 4. Quick Output Validation
+head -n 5 Task_1-1.csv
+wc -l Task_1-1.csv
 # Expected output: 3,474 lines (1 header + 3,473 data records)
 
 # Validate boundary conditions
-grep "MAHARASHTRA" /root/lab2/Task_1-1.csv | tail -n 1   # Dynamic w=5: ends cleanly at 07-04-22
-grep "DELHI" /root/lab2/Task_1-1.csv | tail -n 1         # Dynamic w=10: ends at 07-09-22
+grep "MAHARASHTRA" Task_1-1.csv | tail -n 1   # Dynamic w=5: ends cleanly at 07-04-22[cite: 2]
+grep "DELHI" Task_1-1.csv | tail -n 1         # Dynamic w=10: ends at 07-09-22[cite: 2]
 ```
 
 ---
