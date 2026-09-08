@@ -1,83 +1,127 @@
-# Lab 03 — Advanced MapReduce & Spark Structured APIs
+# Lab 03: Advanced MapReduce & Spark Structured APIs
 
-Nhóm 4 người · RepresentativeID `23127371` · Scala · Docker (Hadoop 3.4.1 + Spark 3.5.3, Java 8)
+**Course:** Big Data Concepts & Technologies  
+**Tech Stack:** Scala 2.12 | Apache Hadoop 3.3.6 | Apache Spark 3.4.1 / 3.5.3 | Java 8  
 
-## Cấu trúc
+---
 
-Repo dựng đúng cây nộp của đề (trang 6-7):
+## 1. Overview & Tasks Summary
 
+This project implements large-scale data processing algorithms for **Lab 03** using Apache Hadoop MapReduce and Apache Spark. All solutions process the dataset `asr.csv` (128,941 transaction records).
+
+| Task ID | Description | Framework | Output Artifact |
+| :--- | :--- | :--- | :--- |
+| **Task 1.1** | Dynamic Sliding Window & Tie-Breaking | MapReduce | `Task_1-1.csv` |
+| **Task 1.2** | State-Level Median Style Variety | MapReduce | `Task_1-2.csv` |
+| **Task 2.1** | Cancelled Order Ratio & Promotion Validity | Spark DataFrame | `Task_2-1.parquet` |
+| **Task 2.2** | Dynamic Percentiles ($P_{90}, P_{80}$) & Population StdDev ($\sigma_{\text{pop}}$) | Spark DataFrame API | `Task_2-2.parquet` |
+
+---
+
+## 2. Submission Directory Structure
+
+Per the official assignment guidelines (**Lab 3 - MR-Spark.pdf**, Section 3):
+
+### Compressed Archive (`<RepresentativeID>.zip`)
+```text
+<RepresentativeID>/
+├── src/
+│   ├── Task_1-1/
+│   │   └── Task11.scala
+│   ├── Task_1-2/
+│   │   └── Task12.scala
+│   ├── Task_2-1/
+│   │   └── Task21.scala
+│   └── Task_2-2/
+│       └── Task22.scala
+└── docs/
+    ├── Report.pdf
+    ├── drive_link.txt
+    └── README.md
 ```
-src/
-├── Task_1-1/Task11.scala   TV1
-├── Task_1-2/Task12.scala   TV2
-├── Task_2-1/Task21.scala   TV3 — xong
-├── Task_2-2/Task22.scala   TV4
-├── pom.xml                 build chung 4 task
-├── docker/                 môi trường Hadoop + Spark
-└── clean.ipynb             tiền xử lý → data/asr.csv
 
-docs/
-└── drive_link.txt          link Drive chứa 4 file kết quả
-                            (Report.pdf và README.md thêm vào khi 4 task xong)
-
-data/asr.csv                dữ liệu đã clean, input chung 4 task
-out/                        kết quả chạy (không commit)
-Lab03/                      đề bài gốc — PDF đề, slide, CSV gốc. Chỉ tham khảo, không nộp.
+### Google Drive Output Directory (`<RepresentativeID>/`)
+The `drive_link.txt` file contains the URL to the shared Google Drive folder organized as follows:
+```text
+<RepresentativeID>/
+├── Task_1-1.csv
+├── Task_1-2.csv
+├── Task_2-1.parquet
+└── Task_2-2.parquet
 ```
 
-Đề bài: `Lab03/Lab 3 - MR-Spark.pdf`. Slide tham khảo: `Lab03/Lab3_Slide_ref.pdf`.
+---
 
-Mỗi task là một file Scala độc lập. Ai làm task nào chỉ sửa file của task đó.
-
-## Dữ liệu
-
-`data/asr.csv` là bản đã tiền xử lý bằng `src/clean.ipynb` từ `Amazon Sale Report.csv`:
-chuẩn hoá `ship-state`, loại dòng thiếu state và state không hợp lệ.
-128.975 → 128.941 dòng, 36 bang.
-
-**Cả 4 task dùng chung `data/asr.csv` này**, không dùng file gốc. Mỗi người tự đọc đề để
-chốt cách hiểu các điều kiện của bài mình.
-
-File gốc `Amazon Sale Report.csv` có sẵn trong `data/` và `Lab03/` (2 bản giống nhau) —
-chỉ cần khi muốn chạy lại `src/clean.ipynb` để sinh lại `asr.csv`.
-
-## Chạy
+## 3. Environment & HDFS Setup
 
 ```bash
-# 1. Dựng container (lần đầu ~10 phút)
-cd src/docker
-docker compose up -d --build
-docker exec -it hcmus-lab3 bash
+# Start Hadoop and Spark cluster services
+service ssh start && start-dfs.sh && start-yarn.sh
 
-# 2. Build jar (trong container)
-cd /lab/src && mvn clean package
-
-# 3. Task Spark
-spark-submit --class Task21 /lab/src/target/lab3-1.0.jar \
-  "file:///lab/data/asr.csv" \
-  "file:///lab/out/Task_2-1_parquet" \
-  "file:///lab/out/Task_2-1.parquet"
-
-# 4. Task MapReduce (cần HDFS)
-hdfs dfs -mkdir -p /data
-hdfs dfs -put -f /lab/data/asr.csv /data/asr.csv
-hadoop jar /lab/src/target/lab3-1.0.jar Task11 /data/asr.csv /out/task11
+# Upload preprocessed dataset to HDFS
+hdfs dfs -mkdir -p /input
+hdfs dfs -put -f asr.csv /input/
 ```
 
-Repo được mount vào `/lab` trong container: `data/` → `/lab/data`, `src/` → `/lab/src`,
-kết quả ghi vào `/lab/out`.
+---
 
-## Nộp
+## 4. Execution Guide
 
-Cây ZIP theo đề (trang 6-7):
+---
 
+### Task 1.1 — MapReduce Dynamic Sliding Window
+```bash
+# Compile and submit Hadoop MapReduce job
+hadoop jar lab3-1.0.jar Task11 /input/asr.csv /output/task11
+
+# Merge HDFS output to local CSV
+hdfs dfs -getmerge /output/task11 Task_1-1.csv
 ```
-23127371/
-├── src/    Task_1-1..2-2, pom.xml, docker/, clean.ipynb
-└── docs/   Report.pdf, drive_link.txt, README.md (optional)
+
+---
+
+### Task 1.2 — MapReduce State-Level Median Variety
+```bash
+# Submit Hadoop MapReduce job
+hadoop jar lab3-1.0.jar Task12 /input/asr.csv /output/task12
+
+# Merge HDFS output to local CSV
+hdfs dfs -getmerge /output/task12 Task_1-2.csv
 ```
 
-- Drive: folder `23127371/` chứa đúng 4 file kết quả, dán link vào `docs/drive_link.txt`
-- Report viết trên Overleaf hoặc Google Docs, xuất PDF vào `docs/Report.pdf`
-- Không kèm `data/`, `out/`, `target/`, `Lab03/` vào ZIP
-- Khoá quyền edit Drive sau deadline (sửa sau = huỷ điểm)
+---
+
+### Task 2.1 — Spark Cancelled Order Percentage
+```bash
+# Submit Spark job
+spark-submit --class Task21 lab3-1.0.jar \
+  "hdfs://localhost:9000/input/asr.csv" \
+  "hdfs://localhost:9000/output/task21_temp" \
+  "file:///path/to/Task_2-1.parquet"
+```
+
+---
+
+### Task 2.2 — Spark Dynamic Percentiles & Population StdDev
+
+#### Method 1: Interactive Execution via Spark Shell (Recommended)
+```bash
+spark-shell --driver-java-options "-Dfile.encoding=UTF-8" -i src/Task_2-2/Task22.scala
+```
+*Run inside Scala REPL:*
+```scala
+Task22.main(Array(
+  "hdfs://localhost:9000/input/asr.csv",
+  "hdfs://localhost:9000/out_temp",
+  "file:///path/to/Task_2-2.parquet"
+))
+```
+
+#### Method 2: Package Execution via `spark-submit`
+```bash
+spark-submit --class Task22 lab3-1.0.jar \
+  "hdfs://localhost:9000/input/asr.csv" \
+  "hdfs://localhost:9000/out_temp" \
+  "file:///path/to/Task_2-2.parquet"
+```
+
