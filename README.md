@@ -108,11 +108,31 @@ grep "DELHI" /root/lab2/Task_1-1.csv | tail -n 1         # Dynamic w=10: ends at
 
 ### Task 1.2 — MapReduce State-Level Median Variety
 ```bash
-# Submit Hadoop MapReduce job
-hadoop jar lab3-1.0.jar Task12 /input/asr.csv /output/task12
+# Navigate to the Task 1-2 project directory
+cd /root/lab3/Task_1-2
 
-# Merge HDFS output to local CSV
-hdfs dfs -getmerge /output/task12 Task_1-2.csv
+# 1. Locate the Scala library JAR
+SCALA_LIB=$(find /usr -name "scala-library*.jar" 2>/dev/null | head -n 1)
+
+# 2. Compile the Scala source file
+scalac -classpath "$(hadoop classpath)" -d classes Task_1-2.scala
+
+# 3. Extract the Scala runtime into the classes directory to avoid missing Scala classes when running on YARN
+cd classes
+jar -xf "$SCALA_LIB"
+cd ..
+
+# 4. Package the compiled classes and Scala runtime into a Fat JAR
+jar -cvf Task1_2.jar -C classes .
+
+# 5. Submit Hadoop MapReduce job
+hadoop jar Task12.jar Task_1_2 \
+/input/asr.csv \
+/output/task12_intermediate \
+/output/task12
+
+# The program automatically generates the final CSV in the current local directory:
+Task_1-2.csv
 ```
 
 ---
