@@ -122,7 +122,7 @@ cd ..
 jar -cvf Task1_2.jar -C classes .
 
 # 5. Submit Hadoop MapReduce job
-hadoop jar Task12.jar Task_1_2 \
+hadoop jar Task1_2.jar Task_1_2 \
 /input/asr.csv \
 /output/task12_intermediate \
 /output/task12
