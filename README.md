@@ -67,8 +67,6 @@ hdfs dfs -put -f asr.csv /input/
 
 ## 4. Execution Guide
 
----
-
 ### Task 1.1 — MapReduce Dynamic Sliding Window
 
 Processes dynamic sliding windows ($w=5$ or $w=10$ days) across 46 states with algebraic triplet aggregation $\Sigma(1, Qty, Qty^2)$ and cascading tie-breaking rules.
